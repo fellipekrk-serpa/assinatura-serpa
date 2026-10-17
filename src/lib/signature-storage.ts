@@ -1,3 +1,4 @@
+import type { CourseJournal, CoursePractice } from '@/data/course'
 import {
   AppData,
   CustomReference,
@@ -192,9 +193,68 @@ function strokeList(value: unknown, counter: { total: number }, field: string): 
   return value.map((stroke) => signatureStroke(stroke, counter))
 }
 
+function sessionId(value: unknown): number {
+  const id = requireNumber(value, 'sessão', 1, 14)
+  if (!Number.isInteger(id)) throw new Error('Sessão inválida no backup')
+  return id
+}
+
+function coursePractice(value: unknown): CoursePractice | undefined {
+  if (value === undefined) return undefined
+  if (!isRecord(value)) throw new Error('Exercício inválido no backup')
+  const stepIndex = requireNumber(value.stepIndex, 'bloco', 0, 2)
+  if (!Number.isInteger(stepIndex)) throw new Error('Bloco inválido no backup')
+  return {
+    sessionId: sessionId(value.sessionId),
+    stepIndex,
+    completeModel: value.completeModel === undefined ? undefined : modelId(value.completeModel),
+  }
+}
+
+function courseJournal(value: unknown): CourseJournal {
+  if (value === undefined) return {}
+  if (!isRecord(value) || Object.keys(value).length > 14)
+    throw new Error('Diário inválido no backup')
+  const result: CourseJournal = {}
+  for (const [key, entry] of Object.entries(value)) {
+    const id = sessionId(Number(key))
+    if (
+      String(id) !== key ||
+      !isRecord(entry) ||
+      typeof entry.notes !== 'string' ||
+      entry.notes.length > 3000 ||
+      !Array.isArray(entry.checks) ||
+      entry.checks.length > 3 ||
+      entry.checks.some((check) => !['0', '1', '2'].includes(check as string))
+    )
+      throw new Error('Anotação inválida no backup')
+    const updatedAt = requireString(entry.updatedAt, 'data da anotação', 80)
+    if (!Number.isFinite(Date.parse(updatedAt))) throw new Error('Data de anotação inválida')
+    result[id] = { notes: entry.notes, checks: [...new Set(entry.checks as string[])], updatedAt }
+  }
+  return result
+}
+
+function mergeCourseJournals(
+  current: CourseJournal = {},
+  imported: CourseJournal = {},
+): CourseJournal {
+  const merged = { ...current }
+  for (const [id, entry] of Object.entries(imported)) {
+    if (
+      entry &&
+      (!merged[Number(id)] ||
+        Date.parse(entry.updatedAt) > Date.parse(merged[Number(id)]!.updatedAt))
+    )
+      merged[Number(id)] = entry
+  }
+  return merged
+}
+
 function draftState(value: unknown, counter: { total: number }): DraftState {
   if (!isRecord(value)) throw new Error('Rascunho inválido no backup')
   return {
+    coursePractice: coursePractice(value.coursePractice),
     strokes: strokeList(value.strokes, counter, 'traços do rascunho'),
     redoStack: strokeList(value.redoStack ?? [], counter, 'itens para refazer'),
     clearedBuffer:
@@ -216,6 +276,8 @@ function draftState(value: unknown, counter: { total: number }): DraftState {
 function savedAttempt(value: unknown, counter: { total: number }): SavedAttempt {
   if (!isRecord(value)) throw new Error('Tentativa inválida no backup')
   return {
+    courseSessionId:
+      value.courseSessionId === undefined ? undefined : sessionId(value.courseSessionId),
     id: requireString(value.id, 'id da tentativa', 120),
     name: requireString(value.name, 'nome da tentativa', 100),
     modelId: modelId(value.modelId),
@@ -267,12 +329,11 @@ export function validateAppData(value: unknown): AppData {
   if (!Array.isArray(value.completedSessions) || value.completedSessions.length > 14) {
     throw new Error('Sessões do curso inválidas no backup')
   }
-  const completedSessions = [
-    ...new Set(value.completedSessions.map((item) => requireNumber(item, 'sessão', 1, 14))),
-  ]
+  const completedSessions = [...new Set(value.completedSessions.map(sessionId))]
   return {
     version: 1,
     draft: draftState(value.draft, counter),
+    courseJournal: courseJournal(value.courseJournal),
     attempts: value.attempts.map((attempt) => savedAttempt(attempt, counter)),
     completedSessions,
     customReferences: references,
@@ -294,6 +355,7 @@ export function mergeBackup(current: AppData, imported: AppData): { data: AppDat
     data: {
       version: 1,
       draft: currentHasDraft ? current.draft : imported.draft,
+      courseJournal: mergeCourseJournals(current.courseJournal, imported.courseJournal),
       attempts: [...current.attempts, ...additions].sort((a, b) =>
         b.createdAt.localeCompare(a.createdAt),
       ),
@@ -319,6 +381,7 @@ export function freshDataKeepingPreferences(data: AppData): AppData {
       lineWidth: data.draft.lineWidth,
     },
     completedSessions: data.completedSessions,
+    courseJournal: data.courseJournal,
     customReferences: data.customReferences,
   }
 }

@@ -215,9 +215,6 @@ export default function TrainStudio({
         {REFERENCE_MODELS.map((model) => {
           const custom = customReferences[model.id]
           const source = custom?.dataUrl ?? model.asset
-          const size = custom
-            ? { width: custom.width, height: custom.height }
-            : dimensions[model.id]
           return (
             <button
               className={cn('model-card', draft.modelId === model.id && 'is-selected')}
@@ -232,14 +229,21 @@ export default function TrainStudio({
                 </div>
                 <span className="ready-badge">Pronto</span>
               </div>
-              <ReferenceImage
-                src={source}
-                custom={custom}
-                alt={`Miniatura da referência ${model.name}`}
-                onLoad={(width, height) =>
-                  setDimensions((current) => ({ ...current, [model.id]: { width, height } }))
-                }
-              />
+              {draft.mode === 'memory' && !memoryRevealed ? (
+                <div className="memory-model-hidden">
+                  <EyeOff size={22} />
+                  <span>Referência oculta</span>
+                </div>
+              ) : (
+                <ReferenceImage
+                  src={source}
+                  custom={custom}
+                  alt={`Miniatura da referência ${model.name}`}
+                  onLoad={(width, height) =>
+                    setDimensions((current) => ({ ...current, [model.id]: { width, height } }))
+                  }
+                />
+              )}
               <div className="model-card-footer">
                 <span>{custom ? 'Referência alternativa' : 'Original incluído'}</span>
               </div>
@@ -254,7 +258,7 @@ export default function TrainStudio({
             <h2>Modo de treino</h2>
             <p>Escolha como a referência acompanha o exercício.</p>
           </div>
-          <div className="reference-buttons">
+          <div className="reference-buttons" hidden={Boolean(draft.coursePractice)}>
             <input
               ref={uploadInputRef}
               type="file"
