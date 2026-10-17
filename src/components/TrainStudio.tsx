@@ -242,7 +242,6 @@ export default function TrainStudio({
               />
               <div className="model-card-footer">
                 <span>{custom ? 'Referência alternativa' : 'Original incluído'}</span>
-                <span>{size ? `${size.width} × ${size.height} px` : 'Carregando…'}</span>
               </div>
             </button>
           )

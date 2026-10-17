@@ -600,7 +600,12 @@ const Index = () => {
         ))
       )}
       {data.attempts.length > 0 && (
-        <button className="secondary-button full-width" onClick={() => selectTab('history')}>
+        <button
+          className="secondary-button full-width"
+          onClick={() => {
+            selectTab('history')
+          }}
+        >
           Abrir histórico completo
         </button>
       )}
@@ -623,10 +628,7 @@ const Index = () => {
       saveStatus={saveStatus}
       savedAt={savedAt}
       historyOpen={historyDrawerOpen}
-      onTabChange={(tab) => {
-        if (tab === 'history' && activeTab === 'train') setHistoryDrawerOpen(true)
-        else selectTab(tab)
-      }}
+      onTabChange={selectTab}
       onCloseHistory={() => setHistoryDrawerOpen(false)}
       historyContent={drawerHistory}
     >
@@ -723,6 +725,7 @@ const Index = () => {
           onLoad={loadAttempt}
           onDelete={deleteAttempt}
           onToggleFavorite={toggleAttemptFavorite}
+          onBackToTrain={() => selectTab('train')}
         />
       ) : (
         <SettingsView

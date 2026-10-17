@@ -1,5 +1,5 @@
 import { ReactNode, useEffect } from 'react'
-import { BookOpenCheck, Check, Grid2X2, History, PenTool, Settings2, X } from 'lucide-react'
+import { BookOpenCheck, Check, Grid2X2, PenTool, Settings2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type AppTab = 'train' | 'course' | 'history' | 'settings'
@@ -59,19 +59,27 @@ export default function AppShell({
             <span className="brand-kicker">Estúdio de Traço</span>
           </div>
           <div className="screen-title">{title}</div>
+          <nav className="header-nav" aria-label="Navegação de seções">
+            {tabs.map((tab) => {
+              const Icon = tab.icon
+              return (
+                <button
+                  key={tab.id}
+                  className={cn('header-nav-link', activeTab === tab.id && 'is-active')}
+                  onClick={() => onTabChange(tab.id)}
+                  aria-current={activeTab === tab.id ? 'page' : undefined}
+                >
+                  <Icon size={15} />
+                  <span>{tab.label}</span>
+                </button>
+              )
+            })}
+          </nav>
           <div className="header-actions">
             <span className={cn('save-badge', saveStatus)}>
               <span className="save-dot" />
               {saveLabel}
             </span>
-            <button className="header-button" onClick={() => onTabChange('history')}>
-              <History size={16} />
-              <span>Histórico</span>
-            </button>
-            <button className="header-button" onClick={() => onTabChange('settings')}>
-              <Settings2 size={16} />
-              <span>Backup</span>
-            </button>
           </div>
         </div>
       </header>
@@ -79,7 +87,7 @@ export default function AppShell({
       <main className="app-main">{children}</main>
 
       <footer className="app-footer">
-        <span>MVP — modo preview · caneta física pendente</span>
+        <span>Salvo neste aparelho</span>
         <span>
           <Check size={13} /> Dados salvos neste navegador
         </span>

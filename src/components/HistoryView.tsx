@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Heart, Layers3, Play, Trash2, Upload } from 'lucide-react'
+import { ArrowLeft, Heart, Layers3, PenTool, Play, Trash2, Upload } from 'lucide-react'
 import { ModelId, REFERENCE_MODELS, SavedAttempt, formatDuration } from '@/data/signature'
 import AttemptThumbnail from '@/components/AttemptThumbnail'
 import ReferenceImage from '@/components/ReferenceImage'
@@ -10,6 +10,7 @@ interface HistoryViewProps {
   onLoad: (attempt: SavedAttempt, replay: boolean) => void
   onDelete: (attempt: SavedAttempt) => void
   onToggleFavorite: (attempt: SavedAttempt) => void
+  onBackToTrain?: () => void
 }
 
 type ModelFilter = 'all' | ModelId
@@ -19,6 +20,7 @@ export default function HistoryView({
   onLoad,
   onDelete,
   onToggleFavorite,
+  onBackToTrain,
 }: HistoryViewProps) {
   const [modelFilter, setModelFilter] = useState<ModelFilter>('all')
   const [favoritesOnly, setFavoritesOnly] = useState(false)
@@ -42,12 +44,19 @@ export default function HistoryView({
       <div className="section-heading-row">
         <div>
           <p className="eyebrow">Arquivo local</p>
-          <h2 id="history-heading">Histórico</h2>
+          <h2 id="history-heading">Histórico completo</h2>
           <p>Suas tentativas ficam somente neste aparelho.</p>
         </div>
-        <span className="count-pill">
-          {attempts.length} {attempts.length === 1 ? 'tentativa' : 'tentativas'}
-        </span>
+        <div className="history-heading-actions">
+          {onBackToTrain && (
+            <button className="secondary-button" onClick={onBackToTrain}>
+              <ArrowLeft size={16} /> Voltar para Treinar
+            </button>
+          )}
+          <span className="count-pill">
+            {attempts.length} {attempts.length === 1 ? 'tentativa' : 'tentativas'}
+          </span>
+        </div>
       </div>
 
       <div className="history-filters" aria-label="Filtros do histórico">
@@ -81,6 +90,15 @@ export default function HistoryView({
           </div>
           <h3>Nenhuma tentativa encontrada</h3>
           <p>Desenhe na aba Treinar e use “Salvar tentativa” para criar sua primeira versão.</p>
+          {onBackToTrain && (
+            <button
+              className="primary-button"
+              style={{ marginTop: '16px' }}
+              onClick={onBackToTrain}
+            >
+              <PenTool size={16} /> Ir para o Treino
+            </button>
+          )}
         </div>
       ) : (
         <div className="attempt-grid">
