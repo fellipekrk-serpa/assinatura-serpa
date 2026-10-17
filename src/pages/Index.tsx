@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import CoursePracticePanel from '@/components/CoursePracticePanel'
+import { startCoursePractice } from '@/lib/course-practice'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Heart, Play, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import AppShell, { AppTab } from '@/components/AppShell'
@@ -101,6 +103,7 @@ const Index = () => {
   const [data, setData] = useState<AppData>(createDefaultData)
   const [hydrated, setHydrated] = useState(false)
   const [activeTab, setActiveTab] = useState<AppTab>('train')
+  const [selectedLesson, setSelectedLesson] = useState(1)
   const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved')
   const [savedAt, setSavedAt] = useState<Date | null>(null)
@@ -348,7 +351,7 @@ const Index = () => {
 
   const openSaveAttempt = () => {
     const now = new Date()
-    const suggested = `Versão ${data.attempts.length + 1} — ${now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+    const suggested = `${data.draft.coursePractice ? `Sessão ${data.draft.coursePractice.sessionId} · ` : ''}Versão ${data.attempts.length + 1} — ${now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
     setSaveDialog({ open: true, name: suggested })
   }
 
@@ -356,6 +359,7 @@ const Index = () => {
     const name = saveDialog.name.trim()
     if (!name || data.draft.strokes.length === 0) return
     const attempt: SavedAttempt = {
+      courseSessionId: data.draft.coursePractice?.sessionId,
       id: makeId('tentativa'),
       name,
       modelId: data.draft.modelId,
@@ -381,6 +385,7 @@ const Index = () => {
         draft: {
           ...current.draft,
           strokes: cloneStrokes(attempt.strokes),
+          coursePractice: undefined,
           redoStack: [],
           clearedBuffer: null,
           modelId: attempt.modelId,
@@ -444,7 +449,9 @@ const Index = () => {
   const exportPng = async (withPaper: boolean) => {
     try {
       const model = REFERENCE_MODELS.find((item) => item.id === data.draft.modelId)!
-      const custom = data.customReferences[data.draft.modelId]
+      const custom = data.draft.coursePractice
+        ? undefined
+        : data.customReferences[data.draft.modelId]
       const includeReference =
         withPaper && data.draft.mode === 'cover' && data.draft.referenceVisible
       const blob = await exportSignaturePng({
@@ -564,6 +571,19 @@ const Index = () => {
     })
   }
 
+  const beginCoursePractice = (id: number, stepIndex: number, modelId: ModelId) => {
+    const hadInk = data.draft.strokes.length > 0
+    stopReplay()
+    setData((current) => startCoursePractice(current, id, stepIndex, modelId))
+    setSelectedLesson(id)
+    setMemoryRevealed(false)
+    setTimerMs(0)
+    setActiveTab('train')
+    setHistoryDrawerOpen(false)
+    if (hadInk) toast.success('Rascunho anterior guardado no Histórico')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const selectTab = (tab: AppTab) => {
     setActiveTab(tab)
     setHistoryDrawerOpen(false)
@@ -650,64 +670,97 @@ const Index = () => {
           <p>Preparando seu estúdio…</p>
         </div>
       ) : activeTab === 'train' ? (
-        <TrainStudio
-          draft={data.draft}
-          customReferences={data.customReferences}
-          displayStrokes={replay.active ? replay.strokes : data.draft.strokes}
-          replaying={replay.active}
-          replaySpeed={replay.speed}
-          replayGuide={replay.guide}
-          testInput={testInput}
-          pointerKind={pointerKind}
-          pointerAccepted={pointerAccepted}
-          memoryRevealed={memoryRevealed}
-          timerMs={timerMs}
-          onSelectModel={(modelId) => updateDraft((draft) => ({ ...draft, modelId }))}
-          onModeChange={(mode: TrainingMode) => {
-            updateDraft((draft) => ({ ...draft, mode }))
-            setMemoryRevealed(false)
-            if (mode === 'memory') setTimerMs(0)
-          }}
-          onOpacityChange={(referenceOpacity) =>
-            updateDraft((draft) => ({ ...draft, referenceOpacity }))
-          }
-          onToggleReference={() => {
-            if (data.draft.mode === 'memory') setMemoryRevealed((value) => !value)
-            else updateDraft((draft) => ({ ...draft, referenceVisible: !draft.referenceVisible }))
-          }}
-          onInkColorChange={(inkColor) => updateDraft((draft) => ({ ...draft, inkColor }))}
-          onLineWidthChange={(lineWidth) => updateDraft((draft) => ({ ...draft, lineWidth }))}
-          onStrokeComplete={(stroke) =>
-            updateDraft((draft) => ({
-              ...draft,
-              strokes: [...draft.strokes, stroke],
-              redoStack: [],
-            }))
-          }
-          onPointerKind={(kind, accepted) => {
-            setPointerKind(kind)
-            setPointerAccepted(accepted)
-          }}
-          onToggleTestInput={() => {
-            setTestInput((value) => !value)
-            setTimerMs(0)
-            setPointerAccepted(null)
-          }}
-          onUndo={undo}
-          onRedo={redo}
-          onRequestClear={requestClear}
-          onRestore={restoreCleared}
-          onToggleFavorite={() => updateDraft((draft) => ({ ...draft, favorite: !draft.favorite }))}
-          onSaveAttempt={openSaveAttempt}
-          onStartReplay={startReplay}
-          onStopReplay={stopReplay}
-          onExportPng={(withPaper) => void exportPng(withPaper)}
-          onReferenceUpload={(modelId, file) => void uploadReference(modelId, file)}
-          onReferenceFrameChange={frameReference}
-          onRestoreDefaultReference={restoreDefaultReference}
-        />
+        <>
+          <CoursePracticePanel
+            draft={data.draft}
+            onReturn={(id) => {
+              setSelectedLesson(id)
+              setActiveTab('course')
+            }}
+            onNext={beginCoursePractice}
+            onExit={() => updateDraft((draft) => ({ ...draft, coursePractice: undefined }))}
+          />
+          <TrainStudio
+            draft={data.draft}
+            customReferences={data.draft.coursePractice ? {} : data.customReferences}
+            displayStrokes={replay.active ? replay.strokes : data.draft.strokes}
+            replaying={replay.active}
+            replaySpeed={replay.speed}
+            replayGuide={replay.guide}
+            testInput={testInput}
+            pointerKind={pointerKind}
+            pointerAccepted={pointerAccepted}
+            memoryRevealed={memoryRevealed}
+            timerMs={timerMs}
+            onSelectModel={(modelId) =>
+              updateDraft((draft) => ({
+                ...draft,
+                modelId,
+                coursePractice: modelId === draft.modelId ? draft.coursePractice : undefined,
+              }))
+            }
+            onModeChange={(mode: TrainingMode) => {
+              updateDraft((draft) => ({
+                ...draft,
+                mode,
+                coursePractice: mode === draft.mode ? draft.coursePractice : undefined,
+              }))
+              setMemoryRevealed(false)
+              if (mode === 'memory') setTimerMs(0)
+            }}
+            onOpacityChange={(referenceOpacity) =>
+              updateDraft((draft) => ({ ...draft, referenceOpacity }))
+            }
+            onToggleReference={() => {
+              if (data.draft.mode === 'memory') setMemoryRevealed((value) => !value)
+              else updateDraft((draft) => ({ ...draft, referenceVisible: !draft.referenceVisible }))
+            }}
+            onInkColorChange={(inkColor) => updateDraft((draft) => ({ ...draft, inkColor }))}
+            onLineWidthChange={(lineWidth) => updateDraft((draft) => ({ ...draft, lineWidth }))}
+            onStrokeComplete={(stroke) =>
+              updateDraft((draft) => ({
+                ...draft,
+                strokes: [...draft.strokes, stroke],
+                redoStack: [],
+              }))
+            }
+            onPointerKind={(kind, accepted) => {
+              setPointerKind(kind)
+              setPointerAccepted(accepted)
+            }}
+            onToggleTestInput={() => {
+              setTestInput((value) => !value)
+              setTimerMs(0)
+              setPointerAccepted(null)
+            }}
+            onUndo={undo}
+            onRedo={redo}
+            onRequestClear={requestClear}
+            onRestore={restoreCleared}
+            onToggleFavorite={() =>
+              updateDraft((draft) => ({ ...draft, favorite: !draft.favorite }))
+            }
+            onSaveAttempt={openSaveAttempt}
+            onStartReplay={startReplay}
+            onStopReplay={stopReplay}
+            onExportPng={(withPaper) => void exportPng(withPaper)}
+            onReferenceUpload={(modelId, file) => void uploadReference(modelId, file)}
+            onReferenceFrameChange={frameReference}
+            onRestoreDefaultReference={restoreDefaultReference}
+          />
+        </>
       ) : activeTab === 'course' ? (
         <CourseView
+          journal={data.courseJournal ?? {}}
+          defaultCompleteModel={data.draft.coursePractice?.completeModel ?? 'a4'}
+          selectedId={selectedLesson}
+          onSelect={setSelectedLesson}
+          onJournalChange={(id, entry) =>
+            setData((current) => ({
+              ...current,
+              courseJournal: { ...current.courseJournal, [id]: entry },
+            }))
+          }
           completedSessions={data.completedSessions}
           onToggleSession={(id) =>
             setData((current) => ({
@@ -717,7 +770,7 @@ const Index = () => {
                 : [...current.completedSessions, id].sort((a, b) => a - b),
             }))
           }
-          onPractice={() => setActiveTab('train')}
+          onPractice={beginCoursePractice}
         />
       ) : activeTab === 'history' ? (
         <HistoryView

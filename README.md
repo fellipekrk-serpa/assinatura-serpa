@@ -1,131 +1,58 @@
-# Projeto Criado com o Skip
+# Assinatura Serpa
 
-Este projeto foi criado de ponta a ponta com o [Skip](https://goskip.dev).
+Estúdio de treino com caneta digital e curso pessoal de assinatura para Fellipe Serpa, destro. A versão 0.1.0 amplia o curso mantendo os três modelos originais: B4 (Serpa), A4 (Fellipe Serpa em uma linha) e A5-04 (em dois níveis).
 
-## 🚀 Stack Tecnológica
+## Curso
 
-- **React 19** - Biblioteca JavaScript para construção de interfaces
-- **Vite** - Build tool extremamente rápida
-- **TypeScript** - Superset tipado do JavaScript
-- **Shadcn UI** - Componentes reutilizáveis e acessíveis
-- **Tailwind CSS** - Framework CSS utility-first
-- **React Router** - Roteamento para aplicações React
-- **React Hook Form** - Gerenciamento de formulários performático
-- **Zod** - Validação de schemas TypeScript-first
-- **Recharts** - Biblioteca de gráficos para React
+- 14 aulas completas, organizadas em quatro etapas: curta, completa em uma linha, completa em dois níveis e escolha/consistência.
+- 42 blocos de prática com objetivo, observação da referência, preparação, repetições, tempo sugerido e instruções.
+- Correções para dificuldades comuns, exercícios no papel, checklist pessoal, notas por aula e manutenção após o curso.
+- Cada bloco abre o modelo e o modo corretos (Cobrir, Copiar ou Memória). As aulas 12–14 permitem escolher a completa favorita.
+- A orientação acompanha o estúdio, com retorno à aula e avanço ao próximo bloco. A conclusão é manual; as aulas não são bloqueadas.
+- Ao abrir outro bloco, o rascunho com tinta é copiado para o Histórico antes de limpar a área. A cópia preserva traços, cor, espessura, favorito e identificação da aula. Um rascunho vazio não gera tentativa.
+- As aulas usam os arquivos originais. Referências alternativas permanecem disponíveis no treino livre. No modo Memória, as miniaturas também ficam ocultas até a revelação.
 
-## 📋 Pré-requisitos
+As imagens não permitem inferir a ordem original dos traços. O curso oferece sugestões de execução, sem inventar uma demonstração do autor. O Replay mostra apenas os movimentos registrados pelo próprio usuário. Não há nota automática de semelhança, promessa de prazo ou mudança de caligrafia geral.
 
-- Node.js 18+
-- npm
+## Dados e compatibilidade
 
-## 🔧 Instalação
+Persistência local em IndexedDB, com fallback em localStorage. Sem login ou banco remoto. O backup JSON continua na versão 1; os novos campos são opcionais e backups anteriores continuam válidos:
 
-```bash
-npm install
-```
+- `courseJournal`: anotações, checklist e data por aula. Na importação, prevalece a entrada mais recente de cada aula.
+- `draft.coursePractice`: aula, bloco e completa selecionada, para preservar o contexto após recarregar.
+- `attempt.courseSessionId`: origem opcional da tentativa.
 
-## 💻 Scripts Disponíveis
+A importação preserva o rascunho atual quando contém tinta e une tentativas por ID. Campos novos são validados antes da importação. O progresso não acompanha automaticamente uma troca de domínio, navegador ou aparelho: exporte e importe o backup em Ajustes.
 
-### Desenvolvimento
+## Desenvolvimento e verificação
 
-```bash
-# Iniciar servidor de desenvolvimento
-npm start
-# ou
-npm run dev
-```
-
-Abre a aplicação em modo de desenvolvimento em [http://localhost:5173](http://localhost:5173).
-
-### Build
+Node.js 22.12+ e pnpm. O lockfile existente é mantido, sem novas dependências.
 
 ```bash
-# Build para produção
-npm run build
-
-# Build para desenvolvimento
-npm run build:dev
+pnpm install --frozen-lockfile
+pnpm dev
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm build
 ```
 
-Gera os arquivos otimizados para produção na pasta `dist/`.
+Os testes usam Node Test Runner e o carregador SSR do Vite. Cobrem renderização das 14 aulas, roteamento de todos os blocos/modelos, preservação do rascunho, compatibilidade com backups antigos, round trip dos campos novos, mesclagem e rejeição de dados inválidos. Isso não substitui a verificação com caneta física.
 
-### Preview
+Conteúdo: `src/data/course.ts`. Interface: `CourseView.tsx` e `CoursePracticePanel.tsx`. Transição de exercício: `src/lib/course-practice.ts`. Persistência: `src/lib/signature-storage.ts`.
 
-```bash
-# Visualizar build de produção localmente
-npm run preview
-```
+## Atualização no Skip
 
-Permite visualizar a build de produção localmente antes do deploy.
+O código do curso está neste repositório, na branch `main`. Na integração GitHub do projeto Skip, sincronize a revisão mais recente e gere/abra a prévia. Não peça ao agente para recriar os modelos ou reescrever o curso.
 
-### Linting e Formatação
+Antes de atualizar, exporte um backup no app atual. Depois de sincronizar, confira na prévia:
 
-```bash
-# Executar linter
-npm run lint
+1. Curso contém as 14 aulas detalhadas, 42 blocos e notas/checklists.
+2. Aula 5 abre A4; aula 8 abre A5-04; aula 11 alterna A4, A5-04 e B4.
+3. Aula 12 com A5-04 selecionada abre A5-04 → B4 → A5-04.
+4. Um rascunho com tinta fica no Histórico ao abrir outro bloco.
+5. Notas/checklists continuam após recarregar; exportação/importação preservam o curso.
+6. Memória oculta tanto a referência principal quanto as miniaturas.
+7. No celular, conferir retrato/paisagem, caneta, pressão disponível e comportamento da palma.
 
-# Executar linter e corrigir problemas automaticamente
-npm run lint:fix
-
-# Formatar código com Oxfmt
-npm run format
-```
-
-## 📁 Estrutura do Projeto
-
-```
-.
-├── src/              # Código fonte da aplicação
-├── public/           # Arquivos estáticos
-├── dist/             # Build de produção (gerado)
-├── node_modules/     # Dependências (gerado)
-└── package.json      # Configurações e dependências do projeto
-```
-
-## 🎨 Componentes UI
-
-Este template inclui uma biblioteca completa de componentes Shadcn UI baseados em Radix UI:
-
-- Accordion
-- Alert Dialog
-- Avatar
-- Button
-- Checkbox
-- Dialog
-- Dropdown Menu
-- Form
-- Input
-- Label
-- Select
-- Switch
-- Tabs
-- Toast
-- Tooltip
-- E muito mais...
-
-## 📝 Ferramentas de Qualidade de Código
-
-- **TypeScript**: Tipagem estática
-- **Oxlint**: Linter extremamente rápido
-- **Oxfmt**: Formatação automática de código
-
-## 🔄 Workflow de Desenvolvimento
-
-1. Instale as dependências: `npm install`
-2. Inicie o servidor de desenvolvimento: `npm start`
-3. Faça suas alterações
-4. Verifique o código: `npm run lint`
-5. Formate o código: `npm run format`
-6. Crie a build: `npm run build`
-7. Visualize a build: `npm run preview`
-
-## 📦 Build e Deploy
-
-Para criar uma build otimizada para produção:
-
-```bash
-npm run build
-```
-
-Os arquivos otimizados serão gerados na pasta `dist/` e estarão prontos para deploy.
+A integração/sincronização no Skip e os testes com caneta física são etapas separadas da publicação do código no GitHub. Confira a prévia antes de publicar uma nova versão do site.
