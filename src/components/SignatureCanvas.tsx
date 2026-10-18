@@ -7,6 +7,7 @@ interface SignatureCanvasProps {
   strokes: SignatureStroke[]
   color: string
   lineWidth: number
+  tool?: 'pen' | 'eraser'
   testInput: boolean
   disabled?: boolean
   guidePoint?: SignaturePoint | null
@@ -27,6 +28,7 @@ export default function SignatureCanvas({
   color,
   lineWidth,
   testInput,
+  tool = 'pen',
   disabled = false,
   guidePoint = null,
   sessionKey,
@@ -51,9 +53,14 @@ export default function SignatureCanvas({
     const height = canvas.clientHeight
     context.setTransform(ratio, 0, 0, ratio, 0, 0)
     context.clearRect(0, 0, width, height)
-    drawSignatureStrokes(context, strokesRef.current, width, height)
-    if (activeStrokeRef.current)
-      drawSignatureStrokes(context, [activeStrokeRef.current], width, height)
+    drawSignatureStrokes(
+      context,
+      activeStrokeRef.current
+        ? [...strokesRef.current, activeStrokeRef.current]
+        : strokesRef.current,
+      width,
+      height,
+    )
     const lastColor = activeStrokeRef.current?.color ?? strokesRef.current.at(-1)?.color ?? color
     drawGuidePoint(context, guideRef.current, lastColor, width, height)
   }, [color])
@@ -160,8 +167,9 @@ export default function SignatureCanvas({
     activePointerRef.current = event.pointerId
     activeStrokeRef.current = {
       id: makeId('traco'),
+      tool,
       color,
-      width: lineWidth,
+      width: tool === 'eraser' ? 20 : lineWidth,
       pointerType: kind,
       points: [toPoint(event.nativeEvent)],
     }
@@ -196,7 +204,11 @@ export default function SignatureCanvas({
     <canvas
       ref={canvasRef}
       className={cn('signature-canvas', disabled && 'is-disabled', className)}
-      aria-label="Área de escrita da assinatura"
+      aria-label={
+        tool === 'eraser'
+          ? 'Área de escrita da assinatura — borracha ativa'
+          : 'Área de escrita da assinatura'
+      }
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

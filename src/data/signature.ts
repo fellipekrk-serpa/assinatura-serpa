@@ -15,6 +15,7 @@ export interface SignaturePoint {
 }
 
 export interface SignatureStroke {
+  tool?: 'pen' | 'eraser'
   id: string
   points: SignaturePoint[]
   color: string

@@ -1,3 +1,4 @@
+import { FOCUSED_REPETITIONS } from '@/data/course-focus'
 import type { CourseJournal, CoursePractice } from '@/data/course'
 import {
   AppData,
@@ -176,10 +177,13 @@ function signatureStroke(value: unknown, counter: { total: number }): SignatureS
   ) {
     throw new Error('Traço inválido ou grande demais no backup')
   }
+  if (value.tool !== undefined && value.tool !== 'pen' && value.tool !== 'eraser')
+    throw new Error('Ferramenta inválida no backup')
   const color = requireString(value.color, 'cor', 20)
   if (!/^#[0-9a-f]{6}$/i.test(color)) throw new Error('Cor de traço inválida no backup')
   return {
     id: requireString(value.id, 'id do traço', 120),
+    ...(value.tool === undefined ? {} : { tool: value.tool as 'pen' | 'eraser' }),
     points: value.points.map((point) => signaturePoint(point, counter)),
     color,
     width: requireNumber(value.width, 'espessura', 1, 20),
@@ -230,7 +234,23 @@ function courseJournal(value: unknown): CourseJournal {
       throw new Error('Anotação inválida no backup')
     const updatedAt = requireString(entry.updatedAt, 'data da anotação', 80)
     if (!Number.isFinite(Date.parse(updatedAt))) throw new Error('Data de anotação inválida')
-    result[id] = { notes: entry.notes, checks: [...new Set(entry.checks as string[])], updatedAt }
+    const repetitions: Partial<Record<string, number>> = {}
+    if (entry.repetitions !== undefined) {
+      if (!isRecord(entry.repetitions) || Object.keys(entry.repetitions).length > 3)
+        throw new Error('Contagem inválida no backup')
+      for (const [block, count] of Object.entries(entry.repetitions)) {
+        if (!['0', '1', '2'].includes(block)) throw new Error('Bloco de contagem inválido')
+        const value = requireNumber(count, 'repetições', 0, FOCUSED_REPETITIONS[Number(block)])
+        if (!Number.isInteger(value)) throw new Error('Contagem deve ser inteira')
+        repetitions[block] = value
+      }
+    }
+    result[id] = {
+      notes: entry.notes,
+      checks: [...new Set(entry.checks as string[])],
+      updatedAt,
+      ...(entry.repetitions === undefined ? {} : { repetitions }),
+    }
   }
   return result
 }

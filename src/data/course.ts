@@ -1,3 +1,4 @@
+import { getCourseFocus, FOCUSED_REPETITIONS } from './course-focus'
 import type { ModelId, TrainingMode } from './signature'
 
 export interface CourseStep {
@@ -23,6 +24,7 @@ export interface CourseLesson {
   repeat: string
 }
 export interface LessonJournal {
+  repetitions?: Partial<Record<string, number>>
   notes: string
   checks: string[]
   updatedAt: string
@@ -841,6 +843,18 @@ export const COURSE_LESSONS: CourseLesson[] = [
       'Se ainda não houver um padrão confortável, retome a aula do detalhe mais instável. Concluir o percurso não exige perfeição.',
   },
 ]
+
+// Focused lessons teach only their named fragment, for a total of 20 repetitions.
+for (const lesson of COURSE_LESSONS) {
+  const focus = getCourseFocus(lesson.id)
+  if (!focus) continue
+  lesson.steps = lesson.steps.map((exercise, index) => ({
+    ...exercise,
+    title: `${['Cobrir', 'Copiar', 'Lembrar'][index]}: ${focus.label}`,
+    repetitions: `${FOCUSED_REPETITIONS[index]} repetições de ${focus.label}`,
+    instruction: `${['Cubra', 'Copie', 'Faça de memória'][index]} apenas ${focus.label}, uma vez por tentativa. Não faça a assinatura completa. Toque em “Concluir repetição” depois de cada tentativa para guardá-la e preparar a próxima.`,
+  }))
+}
 
 export function getLesson(id: number) {
   return COURSE_LESSONS.find((lesson) => lesson.id === id)

@@ -1,6 +1,10 @@
+import { getCourseFocus, repetitionTarget, FOCUSED_REPETITIONS } from '@/data/course-focus'
+import type { LessonJournal } from '@/data/course'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Check,
+  Eraser,
+  PenLine,
   ChevronDown,
   Download,
   Eye,
@@ -37,6 +41,9 @@ import SignatureCanvas from '@/components/SignatureCanvas'
 import { cn } from '@/lib/utils'
 
 interface TrainStudioProps {
+  lessonJournal?: LessonJournal
+  onCompleteRepetition: () => void
+  onRestartRepetitions: () => void
   draft: DraftState
   customReferences: Partial<Record<ModelId, CustomReference>>
   displayStrokes: SignatureStroke[]
@@ -93,6 +100,9 @@ function pointerLabel(kind: PointerKind): string {
 
 export default function TrainStudio({
   draft,
+  lessonJournal,
+  onCompleteRepetition,
+  onRestartRepetitions,
   customReferences,
   displayStrokes,
   replaying,
@@ -128,6 +138,17 @@ export default function TrainStudio({
   const [dimensions, setDimensions] = useState<
     Partial<Record<ModelId, { width: number; height: number }>>
   >({})
+  const [activeTool, setActiveTool] = useState<'pen' | 'eraser'>('pen')
+  useEffect(() => {
+    setActiveTool('pen')
+  }, [draft.startedAt])
+  const focus = getCourseFocus(draft.coursePractice?.sessionId)
+  const target = repetitionTarget(draft.coursePractice)
+  const completed = lessonJournal?.repetitions?.[String(draft.coursePractice?.stepIndex)] ?? 0
+  const totalCompleted = FOCUSED_REPETITIONS.reduce(
+    (sum, _, index) => sum + (lessonJournal?.repetitions?.[String(index)] ?? 0),
+    0,
+  )
   const [moreOpen, setMoreOpen] = useState(false)
   const [referenceEditorOpen, setReferenceEditorOpen] = useState(false)
   const [editorFile, setEditorFile] = useState<File | null>(null)
@@ -211,7 +232,7 @@ export default function TrainStudio({
         </div>
       </div>
 
-      <div className="model-card-grid" aria-label="Modelos de assinatura">
+      <div className="model-card-grid" aria-label="Modelos de assinatura" hidden={Boolean(focus)}>
         {REFERENCE_MODELS.map((model) => {
           const custom = customReferences[model.id]
           const source = custom?.dataUrl ?? model.asset
@@ -299,15 +320,20 @@ export default function TrainStudio({
           <div className="panel-title">
             <div>
               <p className="eyebrow">Referência ativa</p>
-              <h2>{selectedModel.name}</h2>
+              <h2>{focus ? `Apenas ${focus.label}` : selectedModel.name}</h2>
             </div>
             <span className="ready-badge">Pronto</span>
           </div>
-          <ReferenceImage
-            src={selectedSource}
-            custom={selectedCustom}
-            alt={`Referência ${selectedModel.name}`}
-          />
+          {draft.mode === 'memory' && !memoryRevealed ? (
+            <p className="memory-model-hidden">Referência oculta durante a tentativa</p>
+          ) : (
+            <ReferenceImage
+              focus={focus}
+              src={selectedSource}
+              custom={selectedCustom}
+              alt={`Referência ${focus?.label ?? selectedModel.name}`}
+            />
+          )}
           <div className="opacity-control">
             <label htmlFor="reference-opacity">
               <span>Opacidade</span>
@@ -343,9 +369,10 @@ export default function TrainStudio({
             <div className="copy-reference-strip">
               <div>
                 <span>Copie observando</span>
-                <strong>{selectedModel.name}</strong>
+                <strong>{focus?.label ?? selectedModel.name}</strong>
               </div>
               <ReferenceImage
+                focus={focus}
                 src={selectedSource}
                 custom={selectedCustom}
                 alt={`Referência externa ${selectedModel.name}`}
@@ -354,6 +381,77 @@ export default function TrainStudio({
             </div>
           )}
 
+          <div className="practice-local-tools" aria-label="Caneta e borracha">
+            <button
+              className={activeTool === 'pen' ? 'primary-button' : 'secondary-button'}
+              aria-pressed={activeTool === 'pen'}
+              onClick={() => setActiveTool('pen')}
+              disabled={replaying}
+            >
+              <PenLine size={18} /> Caneta
+            </button>
+            <button
+              className={activeTool === 'eraser' ? 'primary-button' : 'secondary-button'}
+              aria-pressed={activeTool === 'eraser'}
+              onClick={() => setActiveTool('eraser')}
+              disabled={replaying}
+            >
+              <Eraser size={18} /> Borracha
+            </button>
+            <button
+              className="text-button"
+              onClick={onUndo}
+              disabled={!draft.strokes.length || replaying}
+            >
+              <Undo2 size={18} /> Desfazer
+            </button>
+            <button
+              className="text-button"
+              onClick={onRequestClear}
+              disabled={!draft.strokes.length || replaying}
+            >
+              <Trash2 size={18} /> Limpar área
+            </button>
+          </div>
+          {focus && target && (
+            <div className="focused-repetitions">
+              <div>
+                <strong>
+                  Somente {focus.label} · {totalCompleted}/20
+                </strong>
+                <p>
+                  Bloco atual: {completed}/{target}. Uma repetição pode ter vários traços.
+                </p>
+              </div>
+              <button
+                className="primary-button"
+                disabled={
+                  replaying ||
+                  completed >= target ||
+                  !draft.strokes.some((stroke) => stroke.tool !== 'eraser')
+                }
+                onClick={onCompleteRepetition}
+              >
+                {completed >= target ? 'Bloco concluído' : 'Concluir repetição'}
+              </button>
+              <button className="text-button" disabled={replaying} onClick={onRestartRepetitions}>
+                Recomeçar série de 20
+              </button>
+              {completed >= target && (
+                <p role="status">
+                  {totalCompleted >= 20
+                    ? 'Série de 20 concluída! Volte à aula para revisar.'
+                    : 'Bloco concluído. Abra o próximo bloco na orientação da aula.'}
+                </p>
+              )}
+            </div>
+          )}
+          {activeTool === 'eraser' && (
+            <p className="eraser-help">
+              Passe a caneta sobre a tinta para apagar. A referência fica intacta; use Desfazer para
+              recuperar.
+            </p>
+          )}
           <div className={cn('paper-frame', replaying && 'is-replaying')}>
             <div className="canvas-status-row">
               <div className={cn('pointer-status', pointerAccepted === false && 'is-warning')}>
@@ -366,6 +464,7 @@ export default function TrainStudio({
             </div>
             {showCanvasReference && (
               <ReferenceImage
+                focus={focus}
                 src={selectedSource}
                 custom={selectedCustom}
                 alt="Referência sob a área de escrita"
@@ -374,6 +473,7 @@ export default function TrainStudio({
               />
             )}
             <SignatureCanvas
+              tool={activeTool}
               strokes={displayStrokes}
               color={draft.inkColor}
               lineWidth={draft.lineWidth}
@@ -402,6 +502,7 @@ export default function TrainStudio({
               <div>
                 <span>Referência revelada</span>
                 <ReferenceImage
+                  focus={focus}
                   src={selectedSource}
                   custom={selectedCustom}
                   alt={`Comparação com ${selectedModel.name}`}

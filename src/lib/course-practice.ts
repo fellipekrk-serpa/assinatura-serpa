@@ -1,3 +1,4 @@
+import { getCourseFocus, repetitionTarget } from '@/data/course-focus'
 import { cloneStrokes, makeId, strokesDuration } from '@/data/signature'
 import type { AppData, ModelId, SavedAttempt } from '@/data/signature'
 import { getLesson, practiceModel } from '@/data/course'
@@ -51,4 +52,32 @@ export function startCoursePractice(
       },
     },
   }
+}
+
+export function completeCourseRepetition(data: AppData): AppData {
+  const context = data.draft.coursePractice
+  const target = repetitionTarget(context)
+  if (!context || !target || !data.draft.strokes.some((stroke) => stroke.tool !== 'eraser'))
+    return data
+  const entry = data.courseJournal?.[context.sessionId] ?? { notes: '', checks: [], updatedAt: '' }
+  const count = entry.repetitions?.[String(context.stepIndex)] ?? 0
+  if (count >= target) return data
+  const now = new Date().toISOString()
+  const focus = getCourseFocus(context.sessionId)!
+  const result = startCoursePractice(
+    data,
+    context.sessionId,
+    context.stepIndex,
+    context.completeModel,
+  )
+  result.attempts[0].name = `Aula ${context.sessionId} · ${focus.label} · bloco ${context.stepIndex + 1} · ${count + 1}/${target}`
+  result.courseJournal = {
+    ...data.courseJournal,
+    [context.sessionId]: {
+      ...entry,
+      updatedAt: now,
+      repetitions: { ...entry.repetitions, [String(context.stepIndex)]: count + 1 },
+    },
+  }
+  return result
 }
