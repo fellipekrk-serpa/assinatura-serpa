@@ -1,3 +1,5 @@
+import { getCourseFocus } from '@/data/course-focus'
+import ReferenceImage from '@/components/ReferenceImage'
 import { useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, Check, Clock3, PenLine } from 'lucide-react'
 import { COURSE_LESSONS, MODE_LABELS, practiceModel } from '@/data/course'
@@ -30,6 +32,7 @@ export default function CourseView({
     defaultCompleteModel === 'a5-04' ? 'a5-04' : 'a4',
   )
   const lesson = COURSE_LESSONS.find((item) => item.id === selectedId) ?? COURSE_LESSONS[0]
+  const focus = getCourseFocus(lesson.id)
   const entry = journal[lesson.id] ?? { notes: '', checks: [], updatedAt: '' }
   const heading = useRef<HTMLHeadingElement>(null)
   const select = (id: number) => {
@@ -150,14 +153,28 @@ export default function CourseView({
             {lesson.title}
           </h3>
           <p className="lesson-objective">{lesson.objective}</p>
+          {focus && (
+            <p className="lesson-focus-goal">
+              <strong>Meta: 20 repetições apenas de {focus.label}.</strong> 8 cobrindo, 8 copiando e
+              4 de memória. Cada botão de prática abre somente esse trecho.
+            </p>
+          )}
           <div className={`lesson-references ${models.length > 1 ? 'has-many' : ''}`}>
             {models.map((model) => (
               <figure key={model.id}>
-                <img
-                  src={model.asset}
-                  alt={`Referência escolhida: ${model.name}, ${model.subtitle}`}
-                  loading="lazy"
-                />
+                {focus ? (
+                  <ReferenceImage
+                    src={model.asset}
+                    alt={`Trecho original: ${focus.label}`}
+                    focus={focus}
+                  />
+                ) : (
+                  <img
+                    src={model.asset}
+                    alt={`Referência escolhida: ${model.name}, ${model.subtitle}`}
+                    loading="lazy"
+                  />
+                )}
                 <figcaption>
                   {model.name} · {model.subtitle}
                 </figcaption>

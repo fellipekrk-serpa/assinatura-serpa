@@ -2612,3 +2612,49 @@
 .reference-buttons[hidden] {
   display: none;
 }
+
+.model-card-grid[hidden] {
+  display: none;
+}
+.practice-local-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+.practice-local-tools button {
+  min-height: 44px;
+}
+.focused-repetitions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  background: #eee8da;
+  border-radius: 12px;
+}
+.focused-repetitions p,
+.eraser-help {
+  color: #675e50;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.eraser-help {
+  margin-bottom: 10px;
+}
+.lesson-focus-goal {
+  padding: 14px 16px;
+  margin-top: 16px;
+  background: #eee8da;
+  border-radius: 10px;
+  line-height: 1.6;
+}
+.lesson-references .reference-image-frame {
+  height: 240px;
+  margin: 0;
+  border: 0;
+}

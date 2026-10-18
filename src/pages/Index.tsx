@@ -1,5 +1,6 @@
+import { getCourseFocus } from '@/data/course-focus'
 import CoursePracticePanel from '@/components/CoursePracticePanel'
-import { startCoursePractice } from '@/lib/course-practice'
+import { startCoursePractice, completeCourseRepetition } from '@/lib/course-practice'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Heart, Play, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -460,6 +461,7 @@ const Index = () => {
         referenceSource: includeReference ? (custom?.dataUrl ?? model.asset) : undefined,
         referenceOpacity: data.draft.referenceOpacity,
         referenceFrame: custom?.frame,
+        referenceFocus: getCourseFocus(data.draft.coursePractice?.sessionId),
       })
       downloadBlob(blob, `assinatura-fellipe-serpa-${fileStamp()}.png`)
       toast.success(withPaper ? 'PNG com papel exportado' : 'PNG transparente exportado')
@@ -681,6 +683,54 @@ const Index = () => {
             onExit={() => updateDraft((draft) => ({ ...draft, coursePractice: undefined }))}
           />
           <TrainStudio
+            lessonJournal={
+              data.draft.coursePractice
+                ? data.courseJournal?.[data.draft.coursePractice.sessionId]
+                : undefined
+            }
+            onRestartRepetitions={() => {
+              const context = data.draft.coursePractice
+              if (!context) return
+              setConfirmState({
+                title: 'Recomeçar as 20 repetições?',
+                description:
+                  'A contagem desta aula volta a zero. Suas tentativas e anotações continuam guardadas.',
+                actionLabel: 'Recomeçar série',
+                onConfirm: () => {
+                  stopReplay()
+                  setData((current) => {
+                    const entry = current.courseJournal?.[context.sessionId] ?? {
+                      notes: '',
+                      checks: [],
+                      updatedAt: '',
+                    }
+                    const next = startCoursePractice(
+                      current,
+                      context.sessionId,
+                      0,
+                      context.completeModel,
+                    )
+                    next.courseJournal = {
+                      ...current.courseJournal,
+                      [context.sessionId]: {
+                        ...entry,
+                        repetitions: {},
+                        updatedAt: new Date().toISOString(),
+                      },
+                    }
+                    return next
+                  })
+                  setMemoryRevealed(false)
+                  setTimerMs(0)
+                  setConfirmState(null)
+                },
+              })
+            }}
+            onCompleteRepetition={() => {
+              setData((current) => completeCourseRepetition(current))
+              setMemoryRevealed(false)
+              setTimerMs(0)
+            }}
             draft={data.draft}
             customReferences={data.draft.coursePractice ? {} : data.customReferences}
             displayStrokes={replay.active ? replay.strokes : data.draft.strokes}

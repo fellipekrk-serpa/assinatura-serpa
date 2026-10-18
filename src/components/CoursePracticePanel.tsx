@@ -1,3 +1,4 @@
+import { getCourseFocus } from '@/data/course-focus'
 import { BookOpen, ArrowRight, X } from 'lucide-react'
 import { getLesson, MODE_LABELS } from '@/data/course'
 import type { DraftState, ModelId } from '@/data/signature'
@@ -39,8 +40,9 @@ export default function CoursePracticePanel({
         {exercise.instruction}
       </p>
       <p className="course-practice-hint">
-        Uma tentativa por vez. Salve antes de limpar para comparar depois. Ao abrir outro bloco, os
-        traços atuais serão guardados no Histórico.
+        {getCourseFocus(lesson.id)
+          ? 'Use “Concluir repetição” junto à área de escrita: sua tentativa é salva, a contagem aumenta e a tela fica pronta para repetir.'
+          : 'Uma tentativa por vez. Salve antes de limpar para comparar depois. Ao abrir outro bloco, os traços atuais serão guardados no Histórico.'}
       </p>
       <div className="course-practice-actions">
         <button className="text-button" onClick={() => onReturn(lesson.id)}>

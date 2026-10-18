@@ -1,11 +1,12 @@
+import type { CourseFocus } from '@/data/course-focus'
 import { ReferenceFrame, SignaturePoint, SignatureStroke } from '@/data/signature'
 
 function pointWidth(stroke: SignatureStroke, point: SignaturePoint): number {
-  if (point.pressure === undefined) return stroke.width
+  if (stroke.tool === 'eraser' || point.pressure === undefined) return stroke.width
   return stroke.width * (0.45 + point.pressure * 0.95)
 }
 
-export function drawSignatureStrokes(
+function drawInkOperations(
   context: CanvasRenderingContext2D,
   strokes: SignatureStroke[],
   width: number,
@@ -17,6 +18,7 @@ export function drawSignatureStrokes(
 
   for (const stroke of strokes) {
     if (stroke.points.length === 0) continue
+    context.globalCompositeOperation = stroke.tool === 'eraser' ? 'destination-out' : 'source-over'
     context.strokeStyle = stroke.color
     context.fillStyle = stroke.color
 
@@ -52,6 +54,28 @@ export function drawSignatureStrokes(
   context.restore()
 }
 
+export function drawSignatureStrokes(
+  context: CanvasRenderingContext2D,
+  strokes: SignatureStroke[],
+  width: number,
+  height: number,
+): void {
+  if (!strokes.some((stroke) => stroke.tool === 'eraser')) {
+    drawInkOperations(context, strokes, width, height)
+    return
+  }
+  // Erase only ink. Paper and the reference must survive in previews and exported PNGs.
+  const layer = document.createElement('canvas')
+  const ratio = Math.max(1, Math.abs(context.getTransform().a))
+  layer.width = Math.max(1, Math.ceil(width * ratio))
+  layer.height = Math.max(1, Math.ceil(height * ratio))
+  const ink = layer.getContext('2d')
+  if (!ink) return
+  ink.setTransform(ratio, 0, 0, ratio, 0, 0)
+  drawInkOperations(ink, strokes, width, height)
+  context.drawImage(layer, 0, 0, width, height)
+}
+
 export function drawGuidePoint(
   context: CanvasRenderingContext2D,
   point: SignaturePoint | null,
@@ -76,7 +100,38 @@ export function drawReferenceContained(
   width: number,
   height: number,
   frame?: ReferenceFrame,
+  focus?: CourseFocus,
 ): void {
+  if (focus) {
+    const [x, y, w, h] = focus.bounds
+    const scale = Math.min(width / w, height / h)
+    context.save()
+    context.translate((width - w * scale) / 2, (height - h * scale) / 2)
+    context.scale(scale, scale)
+    context.translate(-x, -y)
+    // Draw the same SVG clipping geometry used by ReferenceImage.
+    if (focus.path || focus.region) {
+      const mask = document.createElement('canvas')
+      mask.width = image.naturalWidth
+      mask.height = image.naturalHeight
+      const maskContext = mask.getContext('2d')!
+      maskContext.lineWidth = 32
+      maskContext.lineCap = 'round'
+      maskContext.lineJoin = 'round'
+      if (focus.path) maskContext.stroke(new Path2D(focus.path))
+      if (focus.region) maskContext.fill(new Path2D(focus.region))
+      maskContext.globalCompositeOperation = 'source-in'
+      maskContext.drawImage(image, 0, 0)
+      context.drawImage(mask, 0, 0)
+    } else {
+      context.beginPath()
+      context.rect(x, y, w, h)
+      context.clip()
+      context.drawImage(image, 0, 0)
+    }
+    context.restore()
+    return
+  }
   const imageRatio = image.naturalWidth / image.naturalHeight
   const frameRatio = width / height
   let drawWidth = width
@@ -119,6 +174,7 @@ export async function exportSignaturePng(options: {
   referenceSource?: string
   referenceOpacity: number
   referenceFrame?: ReferenceFrame
+  referenceFocus?: CourseFocus
 }): Promise<Blob> {
   const width = 1800
   const height = 972
@@ -135,7 +191,14 @@ export async function exportSignaturePng(options: {
       const image = await loadImage(options.referenceSource)
       context.save()
       context.globalAlpha = options.referenceOpacity
-      drawReferenceContained(context, image, width, height, options.referenceFrame)
+      drawReferenceContained(
+        context,
+        image,
+        width,
+        height,
+        options.referenceFrame,
+        options.referenceFocus,
+      )
       context.restore()
     }
   }
