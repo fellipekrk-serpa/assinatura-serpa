@@ -40,6 +40,7 @@ export interface CustomReference {
 }
 
 export interface DraftState {
+  penType?: import('./pens').PenType
   coursePractice?: CoursePractice
   strokes: SignatureStroke[]
   redoStack: SignatureStroke[]
@@ -69,6 +70,7 @@ export interface SavedAttempt {
 }
 
 export interface AppData {
+  workspace?: { tab: 'train' | 'course' | 'history' | 'settings'; courseSection: 'academy' | 'signature' }
   academy?: AcademyData
   courseJournal?: CourseJournal
   version: 1
