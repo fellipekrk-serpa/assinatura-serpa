@@ -225,8 +225,14 @@ export default function ExerciseStudio({ value, onChange }: Props) {
       <details className="course-preparation">
         <summary>Como praticar e guardar seu progresso</summary>
         <div className="course-preparation-body">
-          <p>Pratique a folha inteira ou selecione um trecho. Cada série tem 8 repetições cobrindo, 8 copiando e 4 de memória.</p>
-          <p>Use a caneta digital. Para mouse ou dedo, ative Modo teste. Guarde uma cópia do progresso em Ajustes.</p>
+          <p>
+            Pratique a folha inteira ou selecione um trecho. Cada série tem 8 repetições cobrindo, 8
+            copiando e 4 de memória.
+          </p>
+          <p>
+            Use a caneta digital. Para mouse ou dedo, ative Modo teste. Guarde uma cópia do
+            progresso em Ajustes.
+          </p>
         </div>
       </details>
       <details
@@ -270,10 +276,7 @@ export default function ExerciseStudio({ value, onChange }: Props) {
                     aria-pressed={b.id === book.id}
                   >
                     <strong>{b.title}</strong>
-                    <span>
-                      {b.pages - b.firstPractice + 1} folhas ·{' '}
-                      Praticar com caneta
-                    </span>
+                    <span>{b.pages - b.firstPractice + 1} folhas · Praticar com caneta</span>
                   </button>
                 </div>
               ))}
@@ -293,11 +296,14 @@ export default function ExerciseStudio({ value, onChange }: Props) {
             <label>
               Folha de treino{' '}
               <select value={page} onChange={(e) => selectPage(book.id, Number(e.target.value))}>
-                {Array.from({ length: book.pages - book.firstPractice + 1 }, (_, offset) => { const i = offset + book.firstPractice - 1; return (
-                  <option key={i + 1} value={i + 1}>
-                    {i + 1} / {book.pages}
-                  </option>
-                )})}
+                {Array.from({ length: book.pages - book.firstPractice + 1 }, (_, offset) => {
+                  const i = offset + book.firstPractice - 1
+                  return (
+                    <option key={i + 1} value={i + 1}>
+                      {i + 1} / {book.pages}
+                    </option>
+                  )
+                })}
               </select>
             </label>
             <button
