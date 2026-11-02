@@ -33,6 +33,7 @@ export default function AcademyView({ value, onChange }: Props) {
   const [preview, setPreview] = useState('')
   const [reference, setReference] = useState('')
   const [loading, setLoading] = useState(false)
+  const [opening, setOpening] = useState(true)
   const [importing, setImporting] = useState(false)
   const [error, setError] = useState('')
   const [crop, setCrop] = useState<Crop>(FULL_PAGE)
@@ -83,6 +84,7 @@ export default function AcademyView({ value, onChange }: Props) {
     let cancelled = false
     let document: PDFDocumentProxy | null = null
     setPdf(null)
+    setOpening(true)
     setPreview('')
     setReference('')
     setError('')
@@ -97,6 +99,9 @@ export default function AcademyView({ value, onChange }: Props) {
       })
       .catch((e) => {
         if (!cancelled) setError(e.message)
+      })
+      .finally(() => {
+        if (!cancelled) setOpening(false)
       })
     return () => {
       cancelled = true
@@ -274,7 +279,7 @@ export default function AcademyView({ value, onChange }: Props) {
         }}
       />
       <p className="academy-help">
-        Baixe as apostilas pelos links abaixo e carregue seus PDFs uma vez neste aparelho. Nenhuma
+        Escolha uma apostila disponível e use Praticar com caneta para escrever sobre as folhas aqui no aplicativo. Se ela não estiver disponível, use Carregar PDFs. Nenhuma
         página é substituída por um modelo genérico. As{' '}
         {WORKBOOKS.reduce((sum, b) => sum + b.pages, 0)} páginas catalogadas incluem capas e
         orientações, além dos exercícios.
@@ -338,13 +343,17 @@ export default function AcademyView({ value, onChange }: Props) {
               {WORKBOOKS.filter((b) => b.group === group).map((b) => (
                 <div className={`academy-book ${b.id === book.id ? 'is-selected' : ''}`} key={b.id}>
                   <button
-                    onClick={() => selectPage(b.id, b.firstPractice)}
+                    onClick={() => {
+                      setCatalogOpen(false)
+                      if (installed.includes(b.id)) practice(defaultWorksheet(b, b.firstPractice))
+                      else selectPage(b.id, b.firstPractice)
+                    }}
                     aria-pressed={b.id === book.id}
                   >
                     <strong>{b.title}</strong>
                     <span>
                       {b.pages} páginas ·{' '}
-                      {installed.includes(b.id) ? 'PDF carregado' : 'Carregar PDF'}
+                      {installed.includes(b.id) ? 'Praticar com caneta' : 'PDF ainda não carregado'}
                     </span>
                   </button>
                   <a
@@ -365,9 +374,18 @@ export default function AcademyView({ value, onChange }: Props) {
           {error}
         </p>
       )}
-      {!pdf && !error && (
+      {opening && <p role="status">Abrindo apostila…</p>}
+      {!pdf && !error && !opening && (
         <p className="course-note">
-          Carregue o PDF de {book.title} para abrir as folhas de treino.{' '}
+          O PDF de {book.title} ainda não está neste aparelho. Carregue a apostila para escrever
+          diretamente sobre os exercícios, com caneta e borracha.{' '}
+          <button
+            className="primary-button"
+            disabled={importing}
+            onClick={() => input.current?.click()}
+          >
+            {importing ? 'Carregando…' : 'Carregar apostila e habilitar treino'}
+          </button>{' '}
           <a
             href={`https://drive.google.com/file/d/${book.driveId}/view`}
             target="_blank"

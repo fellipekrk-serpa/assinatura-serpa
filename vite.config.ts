@@ -2,10 +2,36 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
-import { readFileSync, readdirSync } from 'node:fs'
+import { readFileSync, readdirSync, existsSync, createReadStream } from 'node:fs'
 import type { Plugin } from 'vite'
 // @ts-expect-error - uidPlugin is a custom plugin
 import uidPlugin from './vite-plugin-react-uid'
+
+// Personal originals stay outside public/ and are never included in a build.
+function localWorkbooks(): Plugin {
+  const directory = path.resolve(__dirname, 'Apostilas')
+  return {
+    name: 'personal-workbooks',
+    configureServer(server) {
+      server.middlewares.use('/apostilas/', (request, response, next) => {
+        const name = request.url?.split('?')[0].slice(1)
+        const files = existsSync(directory)
+          ? readdirSync(directory).filter((file) => /^[a-z0-9-]+\.pdf$/.test(file))
+          : []
+        if (name === 'index.json') {
+          response.setHeader('Content-Type', 'application/json')
+          response.end(JSON.stringify(files.map((file) => file.slice(0, -4))))
+          return
+        }
+        if (!name || !files.includes(name)) return next()
+        response.setHeader('Content-Type', 'application/pdf')
+        createReadStream(path.join(directory, name)).on('error', () => {
+          response.destroy()
+        }).pipe(response)
+      })
+    },
+  }
+}
 
 // Serve PDF.js fallback fonts locally in both development and production.
 function pdfFonts(): Plugin {
@@ -49,7 +75,7 @@ export default defineConfig(({ mode }) => ({
       },
     },
   },
-  plugins: [mode === 'development' ? uidPlugin() : undefined, react(), pdfFonts()].filter(Boolean),
+  plugins: [mode === 'development' ? uidPlugin() : undefined, react(), pdfFonts(), localWorkbooks()].filter(Boolean),
   define: {
     'process.env.NODE_ENV': JSON.stringify(mode ?? process.env.NODE_ENV ?? 'production'),
   },
