@@ -1,0 +1,39 @@
+name: Verificar treino
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  deployment_status:
+permissions:
+  contents: read
+jobs:
+  local:
+    if: github.event_name != 'deployment_status'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-package-lock
+      - run: npm test && npx tsc --noEmit -p tsconfig.app.json && npm run build
+      - run: npm install --no-save --no-package-lock playwright@1.64.1
+      - run: npx playwright install --with-deps chromium
+      - name: Escrita, retomada e recuperação
+        run: |
+          npm run dev -- --host 127.0.0.1 --port 5187 > /tmp/assinatura-vite.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:5187 > /dev/null && break || sleep 1; done
+          node scripts/verify-published.mjs http://127.0.0.1:5187
+          node scripts/verify-recovery.mjs http://127.0.0.1:5187
+  published:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save --no-package-lock playwright@1.64.1
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/verify-published.mjs https://assinatura-serpa-737f4--preview.goskip.app/
