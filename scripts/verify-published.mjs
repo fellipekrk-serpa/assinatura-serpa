@@ -67,6 +67,72 @@ try {
   assert.deepEqual(after.academy.draft.strokes, before.academy.draft.strokes)
   assert.equal(after.workspace.tab, 'course')
   assert.equal(await page.getByLabel('Modo teste (dedo/mouse)').isChecked(), false)
+
+  // Undo and redo retain the exact stroke, including its selected pen.
+  await page.getByRole('button', { name: 'Desfazer', exact: true }).click()
+  await waitState(s => s.academy.draft.strokes.length === 0 && s.academy.draft.redo.length === 1)
+  await page.getByRole('button', { name: 'Refazer', exact: true }).click()
+  const redone = await waitState(s => s.academy.draft.strokes.length === 1)
+  assert.deepEqual(redone.academy.draft.strokes, before.academy.draft.strokes)
+  const draw = async () => {
+    const surface = page.locator('.academy-stage canvas')
+    await surface.hover({ position: { x: 80, y: 80 } })
+    const rect = await surface.boundingBox()
+    await page.mouse.move(rect.x + 80, rect.y + 80)
+    await page.mouse.down()
+    await page.mouse.move(rect.x + 160, rect.y + 100, { steps: 8 })
+    await page.mouse.up()
+  }
+  await page.getByLabel('Modo teste (dedo/mouse)').check()
+  await page.getByRole('button', { name: 'Borracha', exact: true }).click()
+  await draw()
+  const erased = await waitState(s => s.academy.draft.strokes.length === 2)
+  assert.equal(erased.academy.draft.strokes[1].tool, 'eraser')
+  await page.getByRole('button', { name: 'Desfazer', exact: true }).click()
+  await waitState(s => s.academy.draft.strokes.length === 1)
+  await page.getByRole('button', { name: 'Refazer', exact: true }).click()
+  await waitState(s => s.academy.draft.strokes.length === 2)
+  await page.getByRole('button', { name: 'Caneta', exact: true }).click()
+  const pens = await pen.locator('option').evaluateAll(options => options.map(o => o.value))
+  let strokeCount = 2
+  for (const id of pens) {
+    await pen.selectOption(id)
+    await draw()
+    strokeCount++
+    const snapshot = await waitState(s => s.academy.draft.strokes.length === strokeCount)
+    assert.equal(snapshot.academy.draft.strokes.at(-1).penType, id)
+    assert.equal(snapshot.academy.draft.strokes.at(-1).tool, 'pen')
+  }
+  const ink = (await state()).academy.draft.strokes
+  // Simulate unavailable worksheet without touching the user's browser data.
+  const sheet = '**/exercicios/coordenacao/5.webp'
+  await page.route(sheet, route => route.abort())
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: 'Tentar novamente', exact: true }).waitFor()
+  assert.deepEqual((await state()).academy.draft.strokes, ink)
+  const retryFailure = page.waitForEvent('requestfailed', request => request.url().includes('/exercicios/coordenacao/5.webp'))
+  await page.getByRole('button', { name: 'Tentar novamente', exact: true }).click()
+  await retryFailure
+  await page.getByRole('button', { name: 'Tentar novamente', exact: true }).waitFor()
+  assert.deepEqual((await state()).academy.draft.strokes, ink)
+  await page.unroute(sheet)
+  await page.getByRole('button', { name: 'Tentar novamente', exact: true }).click()
+  await page.locator('.academy-stage canvas').waitFor()
+  assert.equal(await page.getByRole('alert').count(), 0)
+  assert.deepEqual((await state()).academy.draft.strokes, ink)
+  // Changing page archives the ink and never counts an unfinished practice.
+  await page.getByRole('button', { name: 'Próxima', exact: true }).click()
+  const next = await waitState(s => s.academy.selectedPage === 6)
+  assert.equal(next.academy.draft.strokes.length, 0)
+  assert.deepEqual(next.academy.attempts[0].strokes, ink)
+  assert.equal(next.academy.attempts[0].exercise.page, 5)
+  await page.getByRole('button', { name: 'Anterior', exact: true }).click()
+  const previous = await waitState(s => s.academy.selectedPage === 5)
+  assert.deepEqual(previous.academy.attempts[0].strokes, ink)
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.locator('.academy-stage canvas').waitFor()
+  assert.deepEqual((await state()).academy.attempts[0].strokes, ink)
+
   assert.deepEqual(errors, [])
-  console.log('PASS: B4, curso interno, sete canetas, escrita, retomada de folha/caneta/opacidade e traços.')
+  console.log('PASS: três assinaturas, curso, sete canetas, escrita, retomada, desfazer/refazer, borracha, falha/retry e navegação sem perda de traços.')
 } finally { await context.close(); await browser.close() }
