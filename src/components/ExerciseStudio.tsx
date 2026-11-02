@@ -32,6 +32,8 @@ export default function ExerciseStudio({ value, onChange }: Props) {
   const [loading, setLoading] = useState(false)
   const [opening, setOpening] = useState(true)
   const [error, setError] = useState('')
+  const [bookRetry, setBookRetry] = useState(0)
+  const [sheetRetry, setSheetRetry] = useState(0)
   const [crop, setCrop] = useState<Crop>(FULL_PAGE)
   const [name, setName] = useState('')
   const [tool, setTool] = useState<'pen' | 'eraser'>('pen')
@@ -95,7 +97,7 @@ export default function ExerciseStudio({ value, onChange }: Props) {
       cancelled = true
       void document?.destroy()
     }
-  }, [book.id])
+  }, [book.id, bookRetry])
   useEffect(() => {
     let cancelled = false
     setPreview('')
@@ -125,7 +127,7 @@ export default function ExerciseStudio({ value, onChange }: Props) {
     return () => {
       cancelled = true
     }
-  }, [pdf, activePage, activeCrop, isPracticing])
+  }, [pdf, activePage, activeCrop, isPracticing, sheetRetry])
   useEffect(
     () => () => {
       if (frame.current !== null) cancelAnimationFrame(frame.current)
@@ -284,9 +286,14 @@ export default function ExerciseStudio({ value, onChange }: Props) {
         ))}
       </details>
       {error && (
-        <p className="academy-error" role="alert">
-          {error}
-        </p>
+        <div className="academy-error" role="alert">
+          <p>{error}</p>
+          <p>Seus traços foram mantidos. Tente carregar esta folha novamente.</p>
+          <button className="secondary-button" disabled={loading || opening} onClick={() => {
+            if (pdf) setSheetRetry((value) => value + 1)
+            else setBookRetry((value) => value + 1)
+          }}>Tentar novamente</button>
+        </div>
       )}
       {opening && <p role="status">Preparando exercícios…</p>}
       {pdf && (

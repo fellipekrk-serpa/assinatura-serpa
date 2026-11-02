@@ -24,7 +24,7 @@ export async function renderWorksheet(
   try {
     await img.decode()
   } catch {
-    throw new Error('Não foi possível carregar o exercício. Confira a conexão e tente outra folha.')
+    throw new Error('Não foi possível carregar o exercício. Confira a conexão e tente novamente.')
   }
   if (!crop || (crop[0] === 0 && crop[1] === 0 && crop[2] === 1 && crop[3] === 1)) return url
   const canvas = document.createElement('canvas')
