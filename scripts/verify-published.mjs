@@ -30,8 +30,10 @@ async function waitState(predicate) {
 try {
   await page.goto(url, { waitUntil: 'networkidle' })
   // Fresh isolated browser: never modifies the user's stored training.
-  const images = await page.locator('img').evaluateAll(imgs => imgs.filter(i => i.complete && i.naturalWidth > 0).length)
-  assert.ok(images > 0, 'A referência B4 deve carregar')
+  for (const model of ['B4 original', 'A4 original', 'A5-04']) {
+    const image = page.getByAltText('Miniatura da referência ' + model, { exact: true })
+    assert.ok(await image.evaluate(img => img.complete && img.naturalWidth > 0), 'Referência ausente: ' + model)
+  }
   await page.getByRole('button', { name: 'Curso', exact: true }).click()
   await page.getByRole('heading', { name: 'Exercícios de caligrafia', exact: true }).waitFor()
   await page.getByRole('button', { name: /Coordenação motora/ }).click()
