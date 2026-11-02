@@ -1,8 +1,8 @@
 import type { AcademyData } from './academy'
 import type { CourseJournal, CoursePractice } from './course'
-import b4Original from '@/assets/b4-original-b4ac8.png'
-import a4Original from '@/assets/a4-original-6f2c4.png'
-import a504Original from '@/assets/a5-04-b8077.png'
+import b4Original from '@/assets/b4-original-b4ac8.png?inline'
+import a4Original from '@/assets/a4-original-6f2c4.png?inline'
+import a504Original from '@/assets/a5-04-b8077.png?inline'
 
 export type ModelId = 'b4' | 'a4' | 'a5-04'
 export type TrainingMode = 'cover' | 'copy' | 'memory'

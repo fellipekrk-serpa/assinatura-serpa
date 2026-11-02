@@ -811,7 +811,7 @@ const Index = () => {
               aria-pressed={courseSection === 'academy'}
               onClick={() => setCourseSection('academy')}
             >
-              Caligrafia · Fena e complementos
+              Exercícios de caligrafia
             </button>
             <button
               className="secondary-button"

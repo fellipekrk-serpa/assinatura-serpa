@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { useId, useState } from 'react'
 import type { CourseFocus } from '@/data/course-focus'
 import { CustomReference } from '@/data/signature'
 import { cn } from '@/lib/utils'
@@ -25,6 +25,8 @@ export default function ReferenceImage({
   onLoad,
 }: ReferenceImageProps) {
   const maskId = useId()
+  const [failedSource, setFailedSource] = useState<string | null>(null)
+  const [retry, setRetry] = useState(0)
   const frame = custom?.frame
   if (focus)
     return (
@@ -69,20 +71,30 @@ export default function ReferenceImage({
     )
   return (
     <div className={cn('reference-image-frame', className)}>
+      {failedSource === src && (
+        <button type="button" className="secondary-button" onClick={() => {
+          setFailedSource(null)
+          setRetry((value) => value + 1)
+        }}>Recarregar assinatura</button>
+      )}
       <img
+        key={`${src}:${retry}`}
         src={src}
         alt={alt}
         draggable={false}
         className={cn('reference-image-object', imageClassName)}
         style={{
           opacity,
+          display: failedSource === src ? 'none' : undefined,
           transform: frame
             ? `translate(${frame.offsetX}%, ${frame.offsetY}%) scale(${frame.zoom})`
             : undefined,
         }}
-        onLoad={(event) =>
+        onError={() => setFailedSource(src)}
+        onLoad={(event) => {
+          setFailedSource(null)
           onLoad?.(event.currentTarget.naturalWidth, event.currentTarget.naturalHeight)
-        }
+        }}
       />
     </div>
   )
