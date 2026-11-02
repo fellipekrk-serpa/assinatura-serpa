@@ -651,7 +651,17 @@ const Index = () => {
           ? 'Histórico'
           : 'Ajustes'
 
-  if (loadFailed) return <main className="page-shell"><h1>Seu progresso foi preservado</h1><p>Não foi possível ler os dados salvos. O salvamento está pausado para evitar sobrescrevê-los.</p><button onClick={() => window.location.reload()}>Tentar novamente</button></main>
+  if (loadFailed)
+    return (
+      <main className="page-shell">
+        <h1>Seu progresso foi preservado</h1>
+        <p>
+          Não foi possível ler os dados salvos. O salvamento está pausado para evitar
+          sobrescrevê-los.
+        </p>
+        <button onClick={() => window.location.reload()}>Tentar novamente</button>
+      </main>
+    )
 
   return (
     <AppShell

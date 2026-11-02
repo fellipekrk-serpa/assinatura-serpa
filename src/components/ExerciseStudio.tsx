@@ -24,8 +24,10 @@ interface Props {
 export default function ExerciseStudio({ value, onChange }: Props) {
   const saved = value ?? createAcademyData()
   // Old copy/memory drafts keep their ink while reopening in cover mode.
-  const data = saved.draft && saved.draft.block !== 0
-    ? { ...saved, draft: { ...saved.draft, block: 0 } } : saved
+  const data =
+    saved.draft && saved.draft.block !== 0
+      ? { ...saved, draft: { ...saved.draft, block: 0 } }
+      : saved
   const [pdf, setPdf] = useState<ExerciseDocument | null>(null)
   const [preview, setPreview] = useState('')
   const [reference, setReference] = useState('')
@@ -227,8 +229,14 @@ export default function ExerciseStudio({ value, onChange }: Props) {
       <details className="course-preparation">
         <summary>Como praticar e guardar seu progresso</summary>
         <div className="course-preparation-body">
-          <p>Pratique a folha inteira ou selecione um trecho. Use Cobrir para escrever sobre o modelo, no seu ritmo.</p>
-          <p>Use a caneta digital. Para mouse ou dedo, ative Modo teste. Guarde uma cópia do progresso em Ajustes.</p>
+          <p>
+            Pratique a folha inteira ou selecione um trecho. Use Cobrir para escrever sobre o
+            modelo, no seu ritmo.
+          </p>
+          <p>
+            Use a caneta digital. Para mouse ou dedo, ative Modo teste. Guarde uma cópia do
+            progresso em Ajustes.
+          </p>
         </div>
       </details>
       <details
@@ -272,10 +280,7 @@ export default function ExerciseStudio({ value, onChange }: Props) {
                     aria-pressed={b.id === book.id}
                   >
                     <strong>{b.title}</strong>
-                    <span>
-                      {b.pages - b.firstPractice + 1} folhas ·{' '}
-                      Praticar com caneta
-                    </span>
+                    <span>{b.pages - b.firstPractice + 1} folhas · Praticar com caneta</span>
                   </button>
                 </div>
               ))}
@@ -295,11 +300,14 @@ export default function ExerciseStudio({ value, onChange }: Props) {
             <label>
               Folha de treino{' '}
               <select value={page} onChange={(e) => selectPage(book.id, Number(e.target.value))}>
-                {Array.from({ length: book.pages - book.firstPractice + 1 }, (_, offset) => { const i = offset + book.firstPractice - 1; return (
-                  <option key={i + 1} value={i + 1}>
-                    {i + 1} / {book.pages}
-                  </option>
-                )})}
+                {Array.from({ length: book.pages - book.firstPractice + 1 }, (_, offset) => {
+                  const i = offset + book.firstPractice - 1
+                  return (
+                    <option key={i + 1} value={i + 1}>
+                      {i + 1} / {book.pages}
+                    </option>
+                  )
+                })}
               </select>
             </label>
             <button
@@ -590,9 +598,7 @@ export default function ExerciseStudio({ value, onChange }: Props) {
                 <button
                   className="primary-button"
                   disabled={
-                    !reference ||
-                    !draft.strokes.some((s) => s.tool !== 'eraser') ||
-                    replay !== null
+                    !reference || !draft.strokes.some((s) => s.tool !== 'eraser') || replay !== null
                   }
                   onClick={() => change(completeWorksheet(data))}
                 >

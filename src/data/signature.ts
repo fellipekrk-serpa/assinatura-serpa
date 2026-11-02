@@ -70,7 +70,10 @@ export interface SavedAttempt {
 }
 
 export interface AppData {
-  workspace?: { tab: 'train' | 'course' | 'history' | 'settings'; courseSection: 'academy' | 'signature' }
+  workspace?: {
+    tab: 'train' | 'course' | 'history' | 'settings'
+    courseSection: 'academy' | 'signature'
+  }
   academy?: AcademyData
   courseJournal?: CourseJournal
   version: 1

@@ -56,7 +56,10 @@ function openDatabase(): Promise<IDBDatabase> {
       reject(new Error('O armazenamento local está bloqueado por outra aba'))
   })
 
-  databasePromise = databasePromise.catch(error => { databasePromise = null; throw error })
+  databasePromise = databasePromise.catch((error) => {
+    databasePromise = null
+    throw error
+  })
   return databasePromise
 }
 
@@ -65,11 +68,16 @@ const RECOVERY_KEY = STATE_KEY + '-recovery'
 type StoredData = AppData & { __savedAt: number }
 
 function validStored(value: unknown): AppData | null {
-  try { return value ? validateAppData(value) : null } catch { return null }
+  try {
+    return value ? validateAppData(value) : null
+  } catch {
+    return null
+  }
 }
 function savedTime(value: unknown): number {
   if (!isRecord(value)) return 0
-  if (typeof value.__savedAt === 'number' && Number.isFinite(value.__savedAt)) return value.__savedAt
+  if (typeof value.__savedAt === 'number' && Number.isFinite(value.__savedAt))
+    return value.__savedAt
   const data = validStored(value)
   return data ? Date.parse(data.draft.updatedAt) || 0 : 0
 }
@@ -78,7 +86,8 @@ async function readIndexedDb(): Promise<unknown[]> {
   return new Promise((resolve, reject) => {
     const tx = database.transaction(STORE_NAME, 'readonly')
     const store = tx.objectStore(STORE_NAME)
-    const primary = store.get(STATE_KEY), recovery = store.get(RECOVERY_KEY)
+    const primary = store.get(STATE_KEY),
+      recovery = store.get(RECOVERY_KEY)
     tx.oncomplete = () => resolve([primary.result, recovery.result])
     tx.onerror = tx.onabort = () => reject(tx.error ?? new Error('Falha ao ler progresso'))
   })
@@ -100,40 +109,66 @@ async function writeIndexedDb(data: StoredData): Promise<void> {
 function readFallback(key: string): unknown {
   const text = localStorage.getItem(key)
   if (text === null) return null
-  try { return JSON.parse(text) } catch { return { invalid: true } }
+  try {
+    return JSON.parse(text)
+  } catch {
+    return { invalid: true }
+  }
 }
 function writeFallback(data: StoredData): void {
   const previous = readFallback(FALLBACK_KEY)
-  if (validStored(previous)) localStorage.setItem(FALLBACK_KEY + '-recovery', JSON.stringify(previous))
+  if (validStored(previous))
+    localStorage.setItem(FALLBACK_KEY + '-recovery', JSON.stringify(previous))
   localStorage.setItem(FALLBACK_KEY, JSON.stringify(data))
 }
-export async function loadAppData(): Promise<{ data: AppData | null; storage: StorageKind; recovered?: boolean }> {
+export async function loadAppData(): Promise<{
+  data: AppData | null
+  storage: StorageKind
+  recovered?: boolean
+}> {
   const candidates: { raw: unknown; storage: StorageKind; backup: boolean }[] = []
   let indexedReadFailed = false
-  let readable = false, primaryStorage: StorageKind = 'indexeddb'
+  let readable = false,
+    primaryStorage: StorageKind = 'indexeddb'
   try {
     const values = await readIndexedDb()
     readable = true
     values.forEach((raw, i) => candidates.push({ raw, storage: 'indexeddb', backup: i === 1 }))
-  } catch { indexedReadFailed = true; primaryStorage = 'localStorage' }
+  } catch {
+    indexedReadFailed = true
+    primaryStorage = 'localStorage'
+  }
   try {
     for (const [i, key] of [FALLBACK_KEY, FALLBACK_KEY + '-recovery'].entries())
       candidates.push({ raw: readFallback(key), storage: 'localStorage', backup: i === 1 })
     readable = true
-  } catch { /* IndexedDB may still be readable. */ }
-  const valid = candidates.filter(c => validStored(c.raw)).sort((a, b) => savedTime(b.raw) - savedTime(a.raw))
+  } catch {
+    /* IndexedDB may still be readable. */
+  }
+  const valid = candidates
+    .filter((c) => validStored(c.raw))
+    .sort((a, b) => savedTime(b.raw) - savedTime(a.raw))
   if (valid.length) {
     const chosen = valid[0]
     lastSavedAt = Math.max(lastSavedAt, savedTime(chosen.raw))
     return { data: validateAppData(chosen.raw), storage: chosen.storage, recovered: chosen.backup }
   }
-  if (!readable || indexedReadFailed || candidates.some(c => c.raw != null)) throw new Error('Nenhuma cópia válida do progresso pôde ser lida')
+  if (!readable || indexedReadFailed || candidates.some((c) => c.raw != null))
+    throw new Error('Nenhuma cópia válida do progresso pôde ser lida')
   return { data: null, storage: primaryStorage }
 }
 async function persist(data: AppData): Promise<StorageKind> {
-  const snapshot: StoredData = { ...data, __savedAt: lastSavedAt = Math.max(Date.now(), lastSavedAt + 1) }
-  try { await writeIndexedDb(snapshot); return 'indexeddb' }
-  catch { writeFallback(snapshot); return 'localStorage' }
+  const snapshot: StoredData = {
+    ...data,
+    __savedAt: (lastSavedAt = Math.max(Date.now(), lastSavedAt + 1)),
+  }
+  try {
+    await writeIndexedDb(snapshot)
+    return 'indexeddb'
+  } catch {
+    writeFallback(snapshot)
+    return 'localStorage'
+  }
 }
 export function persistAppData(data: AppData): Promise<StorageKind> {
   const snapshot = validateAppData(JSON.parse(JSON.stringify(data)))
@@ -532,17 +567,24 @@ function academyData(value: unknown, counter: { total: number }): AcademyData | 
 
 function readPenType(value: unknown): PenType | undefined {
   if (value === undefined) return undefined
-  if (!PEN_PRESETS.some(p => p.id === value)) throw new Error('Tipo de caneta inválido')
+  if (!PEN_PRESETS.some((p) => p.id === value)) throw new Error('Tipo de caneta inválido')
   return value as PenType
 }
 function readPreferences(value: unknown): AcademyData['preferences'] {
   if (value === undefined) return undefined
   if (!isRecord(value)) throw new Error('Preferências inválidas')
-  return { penType: readPenType(value.penType) ?? 'fine', opacity: requireNumber(value.opacity, 'opacidade', 0, 1) }
+  return {
+    penType: readPenType(value.penType) ?? 'fine',
+    opacity: requireNumber(value.opacity, 'opacidade', 0, 1),
+  }
 }
 function readWorkspace(value: unknown): AppData['workspace'] {
   if (value === undefined) return undefined
-  if (!isRecord(value) || !['train', 'course', 'history', 'settings'].includes(String(value.tab))
-      || !['academy', 'signature'].includes(String(value.courseSection))) throw new Error('Última tela inválida')
+  if (
+    !isRecord(value) ||
+    !['train', 'course', 'history', 'settings'].includes(String(value.tab)) ||
+    !['academy', 'signature'].includes(String(value.courseSection))
+  )
+    throw new Error('Última tela inválida')
   return value as AppData['workspace']
 }
