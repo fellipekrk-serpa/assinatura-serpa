@@ -1,5 +1,7 @@
 # Revisão das folhas do curso
 
+> Decisão de Serpa em 02/11/2026: manter todas as páginas. Não excluir, ocultar nem filtrar páginas nesta etapa. As sugestões abaixo ficam adiadas para revisão futura, sem execução automática.
+
 Revisão visual das 784 páginas dos 29 itens do catálogo em 02/11/2026, com extração de texto para conferir casos ambíguos. Nenhuma página foi excluída.
 
 Os números abaixo são as páginas físicas dos PDFs e das imagens do aplicativo (contagem iniciada em 1), não necessariamente os números impressos no rodapé.
@@ -56,3 +58,12 @@ Recomendação: ocultar as páginas indicadas da sequência de exercícios, mant
 Ultra fina 0,3 mm; Fina 0,6 mm; Média 1,0 mm; Grossa 1,2 mm; Super grossa 1,6 mm; Flex; Ultra Flex. Medidas indicativas na tela (96 CSS px por polegada), sem calibração física do dispositivo. Flex varia de 0,25 a 2 vezes a largura base; Ultra Flex de 0,12 a 3,5 vezes. Sem amostras de pressão, a largura fica constante.
 
 A pressão usa Pointer Events: https://www.w3.org/TR/pointerevents3/. Equipamentos sem sensor podem reportar pressão constante 0,5; a aplicação não consegue criar sensibilidade física que o dispositivo não fornece. Testes automatizados usam pressão simulada; a sensação real precisa ser validada com a caneta do usuário.
+
+## Continuidade FRAVS — 02/11/2026
+
+- PASS: alteração nº 4 integrada à main (dac499279522ac427013d6c7c4e695f5743a3ea0): Cobrir sem metas e sete canetas.
+- PASS: nenhuma página removida; catálogo e imagens preservados.
+- Evidência anterior: 23 testes, TypeScript, lint e build aprovados; pressão simulada e persistência verificadas no Edge.
+- Publicação pendente: inspeção da prévia após a integração ainda mostrou Cobrir 0/8, Copiar 0/8 e Memória 0/4, sem o seletor das sete canetas.
+- Próxima etapa: sincronizar a main no Skip e gerar nova prévia, preservando ExerciseStudio e os novos componentes de caneta. Depois verificar Cobrir, sete presets, escrita, borracha e persistência no endereço publicado.
+- NOT VERIFIED: resposta da pressão no hardware real do usuário.
