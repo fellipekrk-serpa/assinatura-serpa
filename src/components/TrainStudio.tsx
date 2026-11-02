@@ -62,6 +62,7 @@ interface TrainStudioProps {
   onOpacityChange: (opacity: number) => void
   onToggleReference: () => void
   onInkColorChange: (color: string) => void
+  onPenTypeChange: (pen: PenType) => void
   onLineWidthChange: (width: number) => void
   onStrokeComplete: (stroke: SignatureStroke) => void
   onPointerKind: (kind: PointerKind, accepted: boolean) => void
@@ -120,6 +121,7 @@ export default function TrainStudio({
   onOpacityChange,
   onToggleReference,
   onInkColorChange,
+  onPenTypeChange,
   onLineWidthChange,
   onStrokeComplete,
   onPointerKind,
@@ -140,7 +142,7 @@ export default function TrainStudio({
   const [dimensions, setDimensions] = useState<
     Partial<Record<ModelId, { width: number; height: number }>>
   >({})
-  const [penType, setPenType] = useState<PenType>(draft.strokes.at(-1)?.penType ?? 'fine')
+  const penType = draft.penType ?? draft.strokes.at(-1)?.penType ?? 'fine'
   const [activeTool, setActiveTool] = useState<'pen' | 'eraser'>('pen')
   useEffect(() => {
     setActiveTool('pen')
@@ -536,7 +538,7 @@ export default function TrainStudio({
             <PenPicker
               value={penType}
               onChange={(id) => {
-                setPenType(id)
+                onPenTypeChange(id)
                 onLineWidthChange(PEN_PRESETS.find((p) => p.id === id)!.width)
               }}
             />

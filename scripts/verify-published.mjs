@@ -34,6 +34,10 @@ try {
     const image = page.getByAltText('Miniatura da referência ' + model, { exact: true })
     assert.ok(await image.evaluate(img => img.complete && img.naturalWidth > 0), 'Referência ausente: ' + model)
   }
+  await page.getByLabel('Tipo de caneta', { exact: true }).selectOption('flex')
+  await waitState(s => s?.draft?.penType === 'flex')
+  await page.reload({ waitUntil: 'networkidle' })
+  assert.equal(await page.getByLabel('Tipo de caneta', { exact: true }).inputValue(), 'flex')
   await page.getByRole('button', { name: 'Curso', exact: true }).click()
   await page.getByRole('heading', { name: 'Exercícios de caligrafia', exact: true }).waitFor()
   await page.getByRole('button', { name: /Coordenação motora/ }).click()
