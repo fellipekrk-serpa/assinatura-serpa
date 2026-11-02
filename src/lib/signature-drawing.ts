@@ -1,9 +1,14 @@
 import type { CourseFocus } from '@/data/course-focus'
 import { ReferenceFrame, SignaturePoint, SignatureStroke } from '@/data/signature'
 
-function pointWidth(stroke: SignatureStroke, point: SignaturePoint): number {
+export function pointWidth(stroke: SignatureStroke, point: SignaturePoint): number {
   if (stroke.tool === 'eraser' || point.pressure === undefined) return stroke.width
-  return stroke.width * (0.45 + point.pressure * 0.95)
+  const pressure = Math.max(0, Math.min(1, point.pressure))
+  if (stroke.penType === 'flex') return stroke.width * (0.25 + 1.75 * pressure)
+  if (stroke.penType === 'ultra-flex') return stroke.width * (0.12 + 3.38 * pressure ** 1.4)
+  if (stroke.penType) return stroke.width
+  // Preserve rendering of existing strokes without a pen preset.
+  return stroke.width * (0.45 + pressure * 0.95)
 }
 
 function drawInkOperations(

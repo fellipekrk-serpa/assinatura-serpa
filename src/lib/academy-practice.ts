@@ -1,4 +1,4 @@
-import { BLOCK_TARGETS, WORKBOOKS, worksheetKey } from '@/data/academy'
+import { WORKBOOKS, worksheetKey } from '@/data/academy'
 import type { AcademyData, Worksheet, WorksheetProgress } from '@/data/academy'
 import { cloneStrokes, makeId } from '@/data/signature'
 
@@ -25,14 +25,12 @@ export function beginWorksheet(
   exercise: Worksheet,
   block?: number,
 ): AcademyData {
-  const counts = data.progress[worksheetKey(exercise)]?.counts ?? [0, 0, 0]
-  const first = counts.findIndex((count, i) => count < BLOCK_TARGETS[i])
   const next = archiveWorksheet(data)
   return {
     ...next,
     selectedBook: exercise.bookId,
     selectedPage: exercise.page,
-    draft: { exercise, block: block ?? (first < 0 ? 2 : first), strokes: [], redo: [] },
+    draft: { exercise, block: block ?? 0, strokes: [], redo: [] },
   }
 }
 
@@ -41,18 +39,14 @@ export function completeWorksheet(data: AcademyData): AcademyData {
   if (!draft || !draft.strokes.some((s) => s.tool !== 'eraser')) return data
   const key = worksheetKey(draft.exercise)
   const entry = data.progress[key] ?? { counts: [0, 0, 0], notes: '', updatedAt: '' }
-  if (entry.counts[draft.block] >= BLOCK_TARGETS[draft.block]) return data
   const counts: WorksheetProgress['counts'] = [...entry.counts]
-  counts[draft.block]++
+  counts[0]++
   const next = archiveWorksheet(data)
   return {
     ...next,
     draft: {
       ...next.draft!,
-      block:
-        counts[draft.block] >= BLOCK_TARGETS[draft.block]
-          ? Math.min(2, draft.block + 1)
-          : draft.block,
+      block: 0,
     },
     progress: {
       ...data.progress,

@@ -1,3 +1,5 @@
+import PenPicker from './PenPicker'
+import { PEN_PRESETS, type PenType } from '@/data/pens'
 import { getCourseFocus, repetitionTarget, FOCUSED_REPETITIONS } from '@/data/course-focus'
 import type { LessonJournal } from '@/data/course'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -138,6 +140,7 @@ export default function TrainStudio({
   const [dimensions, setDimensions] = useState<
     Partial<Record<ModelId, { width: number; height: number }>>
   >({})
+  const [penType, setPenType] = useState<PenType>(draft.strokes.at(-1)?.penType ?? 'fine')
   const [activeTool, setActiveTool] = useState<'pen' | 'eraser'>('pen')
   useEffect(() => {
     setActiveTool('pen')
@@ -476,7 +479,8 @@ export default function TrainStudio({
               tool={activeTool}
               strokes={displayStrokes}
               color={draft.inkColor}
-              lineWidth={draft.lineWidth}
+              lineWidth={PEN_PRESETS.find((p) => p.id === penType)!.width}
+              penType={penType}
               testInput={testInput}
               disabled={replaying}
               guidePoint={replayGuide}
@@ -529,26 +533,11 @@ export default function TrainStudio({
                 />
               ))}
             </div>
-            <label className="width-control">
-              <span>
-                Espessura <strong>{draft.lineWidth}px</strong>
-              </span>
-              <input
-                type="range"
-                min="1"
-                max="12"
-                step="1"
-                value={draft.lineWidth}
-                onChange={(event) => onLineWidthChange(Number(event.target.value))}
-              />
-              <i
-                style={{
-                  width: draft.lineWidth,
-                  height: draft.lineWidth,
-                  background: draft.inkColor,
-                }}
-              />
-            </label>
+            <PenPicker value={penType} onChange={(id) => {
+              setPenType(id)
+              onLineWidthChange(PEN_PRESETS.find((p) => p.id === id)!.width)
+            }} />
+
             <button
               className={cn('test-input-button', testInput && 'is-active')}
               onClick={onToggleTestInput}

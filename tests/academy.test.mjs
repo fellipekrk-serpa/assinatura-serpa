@@ -23,16 +23,16 @@ test('eight Fena books cover all 227 pages; two complements cover 131, with no m
     for(let page=1;page<=book.pages;page++)assert.equal(practice.validWorksheet(academy.defaultWorksheet(book,page)).page,page)
   }
 })
-test('20 repetitions archive each complete attempt and advance through 8+8+4 exactly once',()=>{
+test('cover practice stays in cover mode after more than eight and twenty attempts',()=>{
   let data=practice.beginWorksheet(academy.createAcademyData(),worksheet)
   for(let i=0;i<20;i++){
-    assert.equal(data.draft.block,i<8?0:i<16?1:2)
+    assert.equal(data.draft.block,0)
     data.draft.strokes=[stroke(),{...stroke(),id:'second-stroke'}]
     data=practice.completeWorksheet(data)
     assert.equal(data.attempts.length,i+1);assert.equal(data.draft.strokes.length,0)
   }
-  assert.deepEqual(data.progress[academy.worksheetKey(worksheet)].counts,[8,8,4])
-  data.draft.strokes=[stroke()];assert.equal(practice.completeWorksheet(data),data)
+  assert.deepEqual(data.progress[academy.worksheetKey(worksheet)].counts,[20,0,0])
+  data.draft.strokes=[stroke()];assert.equal(practice.completeWorksheet(data).progress[academy.worksheetKey(worksheet)].counts[0],21)
 })
 test('empty and eraser-only drafts do not count; navigating preserves ink without counting it',()=>{
   let data=practice.beginWorksheet(academy.createAcademyData(),worksheet)
@@ -75,7 +75,7 @@ test('backup merge keeps current draft, deduplicates attempts, restores imported
 })
 test('malformed progress and draft context cannot overwrite saved app data',()=>{
   const data=signature.createDefaultData();data.academy=practice.beginWorksheet(academy.createAcademyData(),worksheet)
-  data.academy.progress[academy.worksheetKey(worksheet)]={counts:[9,0,0],notes:'',updatedAt:new Date().toISOString()}
+  data.academy.progress[academy.worksheetKey(worksheet)]={counts:[-1,0,0],notes:'',updatedAt:new Date().toISOString()}
   assert.throws(()=>storage.parseBackup(data))
   data.academy.progress={};data.academy.selectedBook='inglesa';assert.throws(()=>storage.parseBackup(data))
 })
