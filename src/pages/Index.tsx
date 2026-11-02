@@ -1,3 +1,5 @@
+import { lazy, Suspense } from 'react'
+const AcademyView = lazy(() => import('@/components/AcademyView'))
 import { getCourseFocus } from '@/data/course-focus'
 import CoursePracticePanel from '@/components/CoursePracticePanel'
 import { startCoursePractice, completeCourseRepetition } from '@/lib/course-practice'
@@ -105,6 +107,7 @@ const Index = () => {
   const [hydrated, setHydrated] = useState(false)
   const [activeTab, setActiveTab] = useState<AppTab>('train')
   const [selectedLesson, setSelectedLesson] = useState(1)
+  const [courseSection, setCourseSection] = useState<'academy' | 'signature'>('academy')
   const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved')
   const [savedAt, setSavedAt] = useState<Date | null>(null)
@@ -500,7 +503,7 @@ const Index = () => {
 
   const importBackup = async (file: File) => {
     try {
-      if (file.size > 15_000_000) throw new Error('O backup deve ter no máximo 15 MB')
+      if (file.size > 150_000_000) throw new Error('O backup deve ter no máximo 150 MB')
       const text = await readFileAsText(file)
       const parsed = JSON.parse(text) as unknown
       const imported = parseBackup(parsed)
@@ -677,6 +680,7 @@ const Index = () => {
             draft={data.draft}
             onReturn={(id) => {
               setSelectedLesson(id)
+              setCourseSection('signature')
               setActiveTab('course')
             }}
             onNext={beginCoursePractice}
@@ -800,28 +804,55 @@ const Index = () => {
           />
         </>
       ) : activeTab === 'course' ? (
-        <CourseView
-          journal={data.courseJournal ?? {}}
-          defaultCompleteModel={data.draft.coursePractice?.completeModel ?? 'a4'}
-          selectedId={selectedLesson}
-          onSelect={setSelectedLesson}
-          onJournalChange={(id, entry) =>
-            setData((current) => ({
-              ...current,
-              courseJournal: { ...current.courseJournal, [id]: entry },
-            }))
-          }
-          completedSessions={data.completedSessions}
-          onToggleSession={(id) =>
-            setData((current) => ({
-              ...current,
-              completedSessions: current.completedSessions.includes(id)
-                ? current.completedSessions.filter((session) => session !== id)
-                : [...current.completedSessions, id].sort((a, b) => a - b),
-            }))
-          }
-          onPractice={beginCoursePractice}
-        />
+        <>
+          <div className="academy-course-tabs" aria-label="Percursos de aprendizagem">
+            <button
+              className="secondary-button"
+              aria-pressed={courseSection === 'academy'}
+              onClick={() => setCourseSection('academy')}
+            >
+              Caligrafia · Fena e complementos
+            </button>
+            <button
+              className="secondary-button"
+              aria-pressed={courseSection === 'signature'}
+              onClick={() => setCourseSection('signature')}
+            >
+              Minhas assinaturas · 14 aulas
+            </button>
+          </div>
+          {courseSection === 'academy' ? (
+            <Suspense fallback={<p>Carregando apostilas…</p>}>
+              <AcademyView
+                value={data.academy}
+                onChange={(academy) => setData((current) => ({ ...current, academy }))}
+              />
+            </Suspense>
+          ) : (
+            <CourseView
+              journal={data.courseJournal ?? {}}
+              defaultCompleteModel={data.draft.coursePractice?.completeModel ?? 'a4'}
+              selectedId={selectedLesson}
+              onSelect={setSelectedLesson}
+              onJournalChange={(id, entry) =>
+                setData((current) => ({
+                  ...current,
+                  courseJournal: { ...current.courseJournal, [id]: entry },
+                }))
+              }
+              completedSessions={data.completedSessions}
+              onToggleSession={(id) =>
+                setData((current) => ({
+                  ...current,
+                  completedSessions: current.completedSessions.includes(id)
+                    ? current.completedSessions.filter((session) => session !== id)
+                    : [...current.completedSessions, id].sort((a, b) => a - b),
+                }))
+              }
+              onPractice={beginCoursePractice}
+            />
+          )}
+        </>
       ) : activeTab === 'history' ? (
         <HistoryView
           attempts={data.attempts}

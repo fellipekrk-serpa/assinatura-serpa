@@ -1,0 +1,232 @@
+.academy-course-tabs,
+.academy-toolbar {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 1rem 0;
+}
+.academy-screen {
+  max-width: 1200px;
+  margin: auto;
+  padding-bottom: 2rem;
+}
+.academy-help {
+  line-height: 1.7;
+  max-width: 80ch;
+  margin: 1rem 0;
+  color: #645a50;
+}
+.academy-books h3 {
+  font-size: 1.15rem;
+  margin: 1.7rem 0 0.8rem;
+}
+.academy-book-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.7rem;
+}
+.academy-book {
+  border: 1px solid #d8ccba;
+  border-radius: 12px;
+  background: #fffdf8;
+  padding: 12px;
+}
+.academy-book.is-selected {
+  border: 2px solid #83652e;
+  padding: 11px;
+}
+.academy-book button {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-height: 64px;
+}
+.academy-book span,
+.academy-book a {
+  font-size: 0.85rem;
+}
+.academy-book a {
+  display: inline-block;
+  color: #71521d;
+  text-decoration: underline;
+  margin-top: 8px;
+}
+.academy-error {
+  background: #fff0ed;
+  color: #8c2419;
+  padding: 1rem;
+  border-radius: 8px;
+}
+.academy-toolbar label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+.academy-toolbar select,
+.academy-crop-options input:not([type='range']) {
+  background: white;
+  border: 1px solid #b8ac9c;
+  border-radius: 7px;
+  padding: 0.5rem;
+  color: #24211d;
+}
+.academy-page-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 650px) minmax(200px, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+.academy-page {
+  position: relative;
+  touch-action: none;
+  user-select: none;
+  cursor: crosshair;
+  background: white;
+  box-shadow: 0 2px 15px #0001;
+}
+.academy-page img {
+  display: block;
+  width: 100%;
+  pointer-events: none;
+}
+.academy-crop {
+  position: absolute;
+  border: 2px solid #98742f;
+  background: #d1ad5725;
+  pointer-events: none;
+}
+.academy-crop-options {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: sticky;
+  top: 16px;
+}
+.academy-crop-options label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.academy-crop-options p {
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.academy-stage {
+  position: relative;
+  width: 100%;
+  background: white;
+  border: 1px solid #cbbd9e;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.academy-sizing-image {
+  display: block;
+  width: 100%;
+  visibility: hidden;
+  pointer-events: none;
+}
+.academy-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  object-fit: fill;
+}
+.academy-stage .signature-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+.academy-copy-reference {
+  display: block;
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  margin: 1rem auto;
+  border: 1px solid #ddd5c5;
+}
+.academy-practice {
+  background: #faf7f0;
+  padding: 1rem;
+  border-radius: 14px;
+  margin: 1rem 0;
+}
+.academy-practice h3 {
+  font-size: 1.1rem;
+  flex: 1;
+}
+.academy-practice .lesson-notes {
+  margin-top: 1.5rem;
+}
+.academy-history {
+  max-height: 400px;
+  overflow: auto;
+  border: 1px solid #d8ccba;
+  border-radius: 10px;
+}
+.academy-history > div {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem;
+  border-bottom: 1px solid #e6dfd3;
+}
+.academy-saved {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+.academy-saved h3 {
+  width: 100%;
+}
+.academy-toolbar [aria-pressed='true'],
+.academy-course-tabs [aria-pressed='true'] {
+  background: #e4d7bb;
+  box-shadow: inset 0 0 0 1px #83652e;
+}
+@media (max-width: 700px) {
+  .academy-page-layout {
+    grid-template-columns: 1fr;
+  }
+  .academy-crop-options {
+    position: static;
+  }
+  .academy-screen .course-hero {
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .academy-book-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .academy-toolbar {
+    gap: 0.5rem;
+  }
+  .academy-practice {
+    padding: 0.65rem;
+  }
+  .academy-toolbar button {
+    min-height: 42px;
+  }
+  .academy-course-tabs button {
+    flex: 1;
+    font-size: 0.85rem;
+  }
+}
+
+.academy-books > summary {
+  cursor: pointer;
+  padding: 1rem;
+  border: 1px solid #d8ccba;
+  border-radius: 10px;
+  background: #fffdf8;
+  font-weight: 600;
+}
