@@ -10,12 +10,12 @@ O aplicativo oferece todas as páginas dos arquivos catalogados, prática da fol
 
 Consulta à área autenticada de https://academia.fenaeducacao.com.br/ e aos PDFs vinculados nas seções de apostilas e bônus. O catálogo em `src/data/academy.ts` registra os IDs do Drive, a quantidade de páginas e o SHA-256 de cada arquivo efetivamente lido.
 
-| Grupo | Entradas | Páginas por arquivo |
-|---|---:|---:|
-| Apostilas principais Fena | 8 | 227 |
-| Bônus Fena: quatro arquivos avulsos e Mega Pack de 15 | 19 | 426 |
-| Floreios e manual de caneta-tinteiro | 2 | 131 |
-| Total | 29 | 784 |
+| Grupo                                                 | Entradas | Páginas por arquivo |
+| ----------------------------------------------------- | -------: | ------------------: |
+| Apostilas principais Fena                             |        8 |                 227 |
+| Bônus Fena: quatro arquivos avulsos e Mega Pack de 15 |       19 |                 426 |
+| Floreios e manual de caneta-tinteiro                  |        2 |                 131 |
+| Total                                                 |       29 |                 784 |
 
 “Treinando as curvas 1” e “2” têm o mesmo SHA-256 e as mesmas 15 páginas. O carregamento de um deles habilita ambos. O acervo tem 28 arquivos distintos, correspondendo a 769 páginas sem essa duplicação. Capas e orientações entram nessas quantidades; páginas não são contadas como exercícios. Os bônus contêm também alfabetização e leitura infantil.
 
