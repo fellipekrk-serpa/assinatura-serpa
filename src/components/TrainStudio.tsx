@@ -533,10 +533,13 @@ export default function TrainStudio({
                 />
               ))}
             </div>
-            <PenPicker value={penType} onChange={(id) => {
-              setPenType(id)
-              onLineWidthChange(PEN_PRESETS.find((p) => p.id === id)!.width)
-            }} />
+            <PenPicker
+              value={penType}
+              onChange={(id) => {
+                setPenType(id)
+                onLineWidthChange(PEN_PRESETS.find((p) => p.id === id)!.width)
+              }}
+            />
 
             <button
               className={cn('test-input-button', testInput && 'is-active')}
