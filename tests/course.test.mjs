@@ -26,7 +26,7 @@ test('14 complete lessons render with their original references and three exerci
     assert.match(markup, /Leve para o papel/)
     assert.match(markup, /Faça sua revisão/)
     assert.match(markup, /Praticar bloco 3/)
-    assert.match(markup, /assets\//)
+    assert.ok(markup.includes('data:image/png;base64,'), 'original reference must be bundled inline')
   }
 })
 
