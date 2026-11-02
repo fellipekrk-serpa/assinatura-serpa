@@ -9,10 +9,13 @@ const databaseName = 'assinatura-serpa-apostilas'
 async function providedWorkbooks(): Promise<string[]> {
   try {
     const response = await fetch(`${import.meta.env.BASE_URL}apostilas/index.json`)
-    if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) return []
+    if (!response.ok || !response.headers.get('content-type')?.includes('application/json'))
+      return []
     const ids: unknown = await response.json()
     return Array.isArray(ids)
-      ? ids.filter((id): id is string => typeof id === 'string' && WORKBOOKS.some((b) => b.id === id))
+      ? ids.filter(
+          (id): id is string => typeof id === 'string' && WORKBOOKS.some((b) => b.id === id),
+        )
       : []
   } catch {
     return []
@@ -35,7 +38,7 @@ export async function installedWorkbooks(): Promise<string[]> {
       req.onsuccess = () => resolve(req.result.map(String))
       req.onerror = () => reject(req.error)
     })
-    return [...new Set([...cached, ...await providedWorkbooks()])]
+    return [...new Set([...cached, ...(await providedWorkbooks())])]
   } finally {
     db.close()
   }
@@ -86,7 +89,8 @@ export async function openWorkbook(bookId: string): Promise<PDFDocumentProxy | n
     blob = await response.blob()
     const bytes = await blob.arrayBuffer()
     const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
-      .map((b) => b.toString(16).padStart(2, '0')).join('')
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
     if (hash !== WORKBOOKS.find((b) => b.id === bookId)?.sha256)
       throw new Error('A apostila recebida não corresponde ao original catalogado.')
   }

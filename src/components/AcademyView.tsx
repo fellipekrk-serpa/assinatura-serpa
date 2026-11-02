@@ -279,10 +279,10 @@ export default function AcademyView({ value, onChange }: Props) {
         }}
       />
       <p className="academy-help">
-        Escolha uma apostila disponível e use Praticar com caneta para escrever sobre as folhas aqui no aplicativo. Se ela não estiver disponível, use Carregar PDFs. Nenhuma
-        página é substituída por um modelo genérico. As{' '}
-        {WORKBOOKS.reduce((sum, b) => sum + b.pages, 0)} páginas catalogadas incluem capas e
-        orientações, além dos exercícios.
+        Escolha uma apostila disponível e use Praticar com caneta para escrever sobre as folhas aqui
+        no aplicativo. Se ela não estiver disponível, use Carregar PDFs. Nenhuma página é
+        substituída por um modelo genérico. As {WORKBOOKS.reduce((sum, b) => sum + b.pages, 0)}{' '}
+        páginas catalogadas incluem capas e orientações, além dos exercícios.
       </p>
       <details className="course-preparation">
         <summary>Como praticar e guardar seu progresso</summary>
