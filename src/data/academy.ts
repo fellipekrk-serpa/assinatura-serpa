@@ -304,6 +304,7 @@ export interface WorksheetProgress {
   updatedAt: string
 }
 export interface AcademyData {
+  preferences?: { penType: import('./pens').PenType; opacity: number }
   selectedBook: string
   selectedPage: number
   exercises: Worksheet[]

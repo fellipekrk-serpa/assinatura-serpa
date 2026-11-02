@@ -105,6 +105,7 @@ function readImageAsDataUrl(
 const Index = () => {
   const [data, setData] = useState<AppData>(createDefaultData)
   const [hydrated, setHydrated] = useState(false)
+  const [loadFailed, setLoadFailed] = useState(false)
   const [activeTab, setActiveTab] = useState<AppTab>('train')
   const [selectedLesson, setSelectedLesson] = useState(1)
   const [courseSection, setCourseSection] = useState<'academy' | 'signature'>('academy')
@@ -138,11 +139,14 @@ const Index = () => {
   useEffect(() => {
     let cancelled = false
     loadAppData()
-      .then(({ data: stored, storage }) => {
+      .then(({ data: stored, storage, recovered }) => {
         if (cancelled) return
         setStorageKind(storage)
         if (stored) {
           setData(stored)
+          setActiveTab(stored.workspace?.tab ?? 'train')
+          setCourseSection(stored.workspace?.courseSection ?? 'academy')
+          if (recovered) toast.warning('Progresso recuperado da última cópia válida')
           setSavedAt(new Date(stored.draft.updatedAt))
           if (stored.draft.strokes.length > 0) toast.success('Sessão anterior restaurada')
         }
@@ -150,6 +154,7 @@ const Index = () => {
       })
       .catch(() => {
         if (cancelled) return
+        setLoadFailed(true)
         setHydrated(true)
         setSaveStatus('error')
         toast.error('Não foi possível recuperar os dados deste navegador')
@@ -160,10 +165,10 @@ const Index = () => {
   }, [])
 
   useEffect(() => {
-    if (!hydrated) return
+    if (!hydrated || loadFailed) return
     const revision = ++saveRevisionRef.current
     setSaveStatus('saving')
-    persistAppData(data)
+    persistAppData({ ...data, workspace: { tab: activeTab, courseSection } })
       .then((storage) => {
         if (revision !== saveRevisionRef.current) return
         setStorageKind(storage)
@@ -180,7 +185,7 @@ const Index = () => {
         setSaveStatus('error')
         toast.error('O armazenamento está cheio ou indisponível. Exporte um backup.')
       })
-  }, [data, hydrated])
+  }, [data, hydrated, loadFailed, activeTab, courseSection])
 
   const updateDraft = useCallback((updater: (draft: DraftState) => DraftState) => {
     setData((current) => ({
@@ -646,6 +651,8 @@ const Index = () => {
           ? 'Histórico'
           : 'Ajustes'
 
+  if (loadFailed) return <main className="page-shell"><h1>Seu progresso foi preservado</h1><p>Não foi possível ler os dados salvos. O salvamento está pausado para evitar sobrescrevê-los.</p><button onClick={() => window.location.reload()}>Tentar novamente</button></main>
+
   return (
     <AppShell
       activeTab={activeTab}
@@ -770,6 +777,7 @@ const Index = () => {
               else updateDraft((draft) => ({ ...draft, referenceVisible: !draft.referenceVisible }))
             }}
             onInkColorChange={(inkColor) => updateDraft((draft) => ({ ...draft, inkColor }))}
+            onPenTypeChange={(penType) => updateDraft((draft) => ({ ...draft, penType }))}
             onLineWidthChange={(lineWidth) => updateDraft((draft) => ({ ...draft, lineWidth }))}
             onStrokeComplete={(stroke) =>
               updateDraft((draft) => ({

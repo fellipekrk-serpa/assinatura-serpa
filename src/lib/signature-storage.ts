@@ -56,64 +56,87 @@ function openDatabase(): Promise<IDBDatabase> {
       reject(new Error('O armazenamento local está bloqueado por outra aba'))
   })
 
+  databasePromise = databasePromise.catch(error => { databasePromise = null; throw error })
   return databasePromise
 }
 
-async function readIndexedDb(): Promise<unknown> {
+let lastSavedAt = 0
+const RECOVERY_KEY = STATE_KEY + '-recovery'
+type StoredData = AppData & { __savedAt: number }
+
+function validStored(value: unknown): AppData | null {
+  try { return value ? validateAppData(value) : null } catch { return null }
+}
+function savedTime(value: unknown): number {
+  if (!isRecord(value)) return 0
+  if (typeof value.__savedAt === 'number' && Number.isFinite(value.__savedAt)) return value.__savedAt
+  const data = validStored(value)
+  return data ? Date.parse(data.draft.updatedAt) || 0 : 0
+}
+async function readIndexedDb(): Promise<unknown[]> {
   const database = await openDatabase()
   return new Promise((resolve, reject) => {
-    const transaction = database.transaction(STORE_NAME, 'readonly')
-    const request = transaction.objectStore(STORE_NAME).get(STATE_KEY)
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error ?? new Error('Falha ao ler os dados locais'))
+    const tx = database.transaction(STORE_NAME, 'readonly')
+    const store = tx.objectStore(STORE_NAME)
+    const primary = store.get(STATE_KEY), recovery = store.get(RECOVERY_KEY)
+    tx.oncomplete = () => resolve([primary.result, recovery.result])
+    tx.onerror = tx.onabort = () => reject(tx.error ?? new Error('Falha ao ler progresso'))
   })
 }
-
-async function writeIndexedDb(data: AppData): Promise<void> {
+async function writeIndexedDb(data: StoredData): Promise<void> {
   const database = await openDatabase()
   await new Promise<void>((resolve, reject) => {
-    const transaction = database.transaction(STORE_NAME, 'readwrite')
-    transaction.objectStore(STORE_NAME).put(data, STATE_KEY)
-    transaction.oncomplete = () => resolve()
-    transaction.onerror = () =>
-      reject(transaction.error ?? new Error('Falha ao salvar os dados locais'))
-    transaction.onabort = () =>
-      reject(transaction.error ?? new Error('O salvamento local foi interrompido'))
+    const tx = database.transaction(STORE_NAME, 'readwrite')
+    const store = tx.objectStore(STORE_NAME)
+    const previous = store.get(STATE_KEY)
+    previous.onsuccess = () => {
+      if (validStored(previous.result)) store.put(previous.result, RECOVERY_KEY)
+      store.put(data, STATE_KEY)
+    }
+    tx.oncomplete = () => resolve()
+    tx.onerror = tx.onabort = () => reject(tx.error ?? new Error('Falha ao salvar progresso'))
   })
 }
-
-function readFallback(): unknown {
-  const value = localStorage.getItem(FALLBACK_KEY)
-  return value ? JSON.parse(value) : null
+function readFallback(key: string): unknown {
+  const text = localStorage.getItem(key)
+  if (text === null) return null
+  try { return JSON.parse(text) } catch { return { invalid: true } }
 }
-
-function writeFallback(data: AppData): void {
+function writeFallback(data: StoredData): void {
+  const previous = readFallback(FALLBACK_KEY)
+  if (validStored(previous)) localStorage.setItem(FALLBACK_KEY + '-recovery', JSON.stringify(previous))
   localStorage.setItem(FALLBACK_KEY, JSON.stringify(data))
 }
-
-export async function loadAppData(): Promise<{ data: AppData | null; storage: StorageKind }> {
+export async function loadAppData(): Promise<{ data: AppData | null; storage: StorageKind; recovered?: boolean }> {
+  const candidates: { raw: unknown; storage: StorageKind; backup: boolean }[] = []
+  let indexedReadFailed = false
+  let readable = false, primaryStorage: StorageKind = 'indexeddb'
   try {
-    const stored = await readIndexedDb()
-    if (!stored) return { data: null, storage: 'indexeddb' }
-    return { data: validateAppData(stored), storage: 'indexeddb' }
-  } catch {
-    const stored = readFallback()
-    return { data: stored ? validateAppData(stored) : null, storage: 'localStorage' }
+    const values = await readIndexedDb()
+    readable = true
+    values.forEach((raw, i) => candidates.push({ raw, storage: 'indexeddb', backup: i === 1 }))
+  } catch { indexedReadFailed = true; primaryStorage = 'localStorage' }
+  try {
+    for (const [i, key] of [FALLBACK_KEY, FALLBACK_KEY + '-recovery'].entries())
+      candidates.push({ raw: readFallback(key), storage: 'localStorage', backup: i === 1 })
+    readable = true
+  } catch { /* IndexedDB may still be readable. */ }
+  const valid = candidates.filter(c => validStored(c.raw)).sort((a, b) => savedTime(b.raw) - savedTime(a.raw))
+  if (valid.length) {
+    const chosen = valid[0]
+    lastSavedAt = Math.max(lastSavedAt, savedTime(chosen.raw))
+    return { data: validateAppData(chosen.raw), storage: chosen.storage, recovered: chosen.backup }
   }
+  if (!readable || indexedReadFailed || candidates.some(c => c.raw != null)) throw new Error('Nenhuma cópia válida do progresso pôde ser lida')
+  return { data: null, storage: primaryStorage }
 }
-
 async function persist(data: AppData): Promise<StorageKind> {
-  try {
-    await writeIndexedDb(data)
-    return 'indexeddb'
-  } catch {
-    writeFallback(data)
-    return 'localStorage'
-  }
+  const snapshot: StoredData = { ...data, __savedAt: lastSavedAt = Math.max(Date.now(), lastSavedAt + 1) }
+  try { await writeIndexedDb(snapshot); return 'indexeddb' }
+  catch { writeFallback(snapshot); return 'localStorage' }
 }
-
 export function persistAppData(data: AppData): Promise<StorageKind> {
-  const snapshot = JSON.parse(JSON.stringify(data)) as AppData
+  const snapshot = validateAppData(JSON.parse(JSON.stringify(data)))
   saveQueue = saveQueue.catch(() => 'indexeddb' as const).then(() => persist(snapshot))
   return saveQueue
 }
@@ -281,6 +304,7 @@ function mergeCourseJournals(
 function draftState(value: unknown, counter: { total: number }): DraftState {
   if (!isRecord(value)) throw new Error('Rascunho inválido no backup')
   return {
+    ...(value.penType === undefined ? {} : { penType: readPenType(value.penType) }),
     coursePractice: coursePractice(value.coursePractice),
     strokes: strokeList(value.strokes, counter, 'traços do rascunho'),
     redoStack: strokeList(value.redoStack ?? [], counter, 'itens para refazer'),
@@ -359,6 +383,7 @@ export function validateAppData(value: unknown): AppData {
   const completedSessions = [...new Set(value.completedSessions.map(sessionId))]
   return {
     version: 1,
+    ...(value.workspace === undefined ? {} : { workspace: readWorkspace(value.workspace) }),
     draft: draftState(value.draft, counter),
     courseJournal: courseJournal(value.courseJournal),
     academy: academyData(value.academy, counter),
@@ -382,6 +407,7 @@ export function mergeBackup(current: AppData, imported: AppData): { data: AppDat
     added: additions.length,
     data: {
       version: 1,
+      workspace: current.workspace ?? imported.workspace,
       draft: currentHasDraft ? current.draft : imported.draft,
       courseJournal: mergeCourseJournals(current.courseJournal, imported.courseJournal),
       academy: mergeAcademy(current.academy, imported.academy),
@@ -402,6 +428,7 @@ export function freshDataKeepingPreferences(data: AppData): AppData {
     ...fresh,
     draft: {
       ...fresh.draft,
+      penType: data.draft.penType,
       modelId: data.draft.modelId,
       mode: data.draft.mode,
       referenceOpacity: data.draft.referenceOpacity,
@@ -493,6 +520,7 @@ function academyData(value: unknown, counter: { total: number }): AcademyData | 
     progress[key] = { counts, notes: v.notes, updatedAt: v.updatedAt }
   }
   return {
+    ...(value.preferences === undefined ? {} : { preferences: readPreferences(value.preferences) }),
     selectedBook: book.id,
     selectedPage: Number(value.selectedPage),
     exercises,
@@ -500,4 +528,21 @@ function academyData(value: unknown, counter: { total: number }): AcademyData | 
     draft,
     progress,
   }
+}
+
+function readPenType(value: unknown): PenType | undefined {
+  if (value === undefined) return undefined
+  if (!PEN_PRESETS.some(p => p.id === value)) throw new Error('Tipo de caneta inválido')
+  return value as PenType
+}
+function readPreferences(value: unknown): AcademyData['preferences'] {
+  if (value === undefined) return undefined
+  if (!isRecord(value)) throw new Error('Preferências inválidas')
+  return { penType: readPenType(value.penType) ?? 'fine', opacity: requireNumber(value.opacity, 'opacidade', 0, 1) }
+}
+function readWorkspace(value: unknown): AppData['workspace'] {
+  if (value === undefined) return undefined
+  if (!isRecord(value) || !['train', 'course', 'history', 'settings'].includes(String(value.tab))
+      || !['academy', 'signature'].includes(String(value.courseSection))) throw new Error('Última tela inválida')
+  return value as AppData['workspace']
 }
