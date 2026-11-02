@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-const AcademyView = lazy(() => import('@/components/AcademyView'))
+const AcademyView = lazy(() => import('@/components/ExerciseStudio'))
 import { getCourseFocus } from '@/data/course-focus'
 import CoursePracticePanel from '@/components/CoursePracticePanel'
 import { startCoursePractice, completeCourseRepetition } from '@/lib/course-practice'
