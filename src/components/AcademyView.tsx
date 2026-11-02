@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { toast } from 'sonner'
 import SignatureCanvas from './SignatureCanvas'
 import {
   BLOCK_NAMES,
@@ -12,15 +11,10 @@ import {
 } from '@/data/academy'
 import type { AcademyData, Crop, Worksheet, WorksheetDraft } from '@/data/academy'
 import { archiveWorksheet, beginWorksheet, completeWorksheet } from '@/lib/academy-practice'
-import {
-  importWorkbook,
-  installedWorkbooks,
-  openWorkbook,
-  renderWorksheet,
-} from '@/lib/workbook-pdf'
+import { openWorkbook, renderWorksheet } from '@/lib/workbook-pdf'
 import { downloadBlob, drawSignatureStrokes } from '@/lib/signature-drawing'
 import type { SignatureStroke } from '@/data/signature'
-import type { PDFDocumentProxy } from 'pdfjs-dist'
+import type { ExerciseDocument } from '@/lib/workbook-pdf'
 
 interface Props {
   value?: AcademyData
@@ -28,13 +22,11 @@ interface Props {
 }
 export default function AcademyView({ value, onChange }: Props) {
   const data = value ?? createAcademyData()
-  const [installed, setInstalled] = useState<string[]>([])
-  const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null)
+  const [pdf, setPdf] = useState<ExerciseDocument | null>(null)
   const [preview, setPreview] = useState('')
   const [reference, setReference] = useState('')
   const [loading, setLoading] = useState(false)
   const [opening, setOpening] = useState(true)
-  const [importing, setImporting] = useState(false)
   const [error, setError] = useState('')
   const [crop, setCrop] = useState<Crop>(FULL_PAGE)
   const [name, setName] = useState('')
@@ -48,7 +40,6 @@ export default function AcademyView({ value, onChange }: Props) {
   const [showHistory, setShowHistory] = useState(false)
   const [catalogOpen, setCatalogOpen] = useState(true)
   const [seriesConfirm, setSeriesConfirm] = useState(false)
-  const input = useRef<HTMLInputElement>(null)
   const drag = useRef<[number, number] | null>(null)
   const stage = useRef<HTMLDivElement>(null)
   const frame = useRef<number | null>(null)
@@ -76,13 +67,8 @@ export default function AcademyView({ value, onChange }: Props) {
     if (draft) onChange({ ...data, draft: { ...draft, ...patch } })
   }
   useEffect(() => {
-    installedWorkbooks()
-      .then(setInstalled)
-      .catch(() => setError('O navegador não disponibilizou o armazenamento das apostilas.'))
-  }, [])
-  useEffect(() => {
     let cancelled = false
-    let document: PDFDocumentProxy | null = null
+    let document: ExerciseDocument | null = null
     setPdf(null)
     setOpening(true)
     setPreview('')
@@ -107,7 +93,7 @@ export default function AcademyView({ value, onChange }: Props) {
       cancelled = true
       void document?.destroy()
     }
-  }, [book.id, installed])
+  }, [book.id])
   useEffect(() => {
     let cancelled = false
     setPreview('')
@@ -145,34 +131,10 @@ export default function AcademyView({ value, onChange }: Props) {
     [],
   )
 
-  async function importFiles(files: File[]) {
-    setImporting(true)
-    let success = 0
-    for (const file of files) {
-      try {
-        const loaded = await importWorkbook(file)
-        success++
-        toast.success(`${loaded.title} disponível neste aparelho`)
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Falha na importação')
-      }
-    }
-    try {
-      if (success) setInstalled(await installedWorkbooks())
-    } catch {
-      toast.error('Não foi possível atualizar a lista de PDFs carregados.')
-    } finally {
-      setImporting(false)
-    }
-  }
   function selectPage(bookId: string, nextPage: number) {
     setCatalogOpen(false)
-    change({
-      ...archiveWorksheet(data),
-      draft: undefined,
-      selectedBook: bookId,
-      selectedPage: nextPage,
-    })
+    const selectedBook = WORKBOOKS.find((item) => item.id === bookId)!
+    change(beginWorksheet(data, defaultWorksheet(selectedBook, nextPage)))
     setCrop(FULL_PAGE)
     setName('')
     setShowHistory(false)
@@ -256,57 +218,15 @@ export default function AcademyView({ value, onChange }: Props) {
       <div className="course-hero">
         <div>
           <p className="eyebrow">Caligrafia completa</p>
-          <h2 id="academy-title">Academia Fena</h2>
-          <p>8 apostilas principais · 227 páginas · todos os exercícios das folhas originais</p>
+          <h2 id="academy-title">Exercícios de caligrafia</h2>
+          <p>Escolha o treino e escreva com sua caneta diretamente sobre o exercício.</p>
         </div>
-        <button
-          className="secondary-button"
-          disabled={importing}
-          onClick={() => input.current?.click()}
-        >
-          {importing ? 'Carregando PDFs…' : 'Carregar PDFs'}
-        </button>
       </div>
-      <input
-        ref={input}
-        type="file"
-        multiple
-        accept="application/pdf,.pdf"
-        hidden
-        onChange={(e) => {
-          void importFiles(Array.from(e.target.files ?? []))
-          e.currentTarget.value = ''
-        }}
-      />
-      <p className="academy-help">
-        Escolha uma apostila disponível e use Praticar com caneta para escrever sobre as folhas aqui no aplicativo. Se ela não estiver disponível, use Carregar PDFs. Nenhuma
-        página é substituída por um modelo genérico. As{' '}
-        {WORKBOOKS.reduce((sum, b) => sum + b.pages, 0)} páginas catalogadas incluem capas e
-        orientações, além dos exercícios.
-      </p>
       <details className="course-preparation">
         <summary>Como praticar e guardar seu progresso</summary>
         <div className="course-preparation-body">
-          <p>
-            Escolha uma apostila e uma folha. Você pode treinar a página inteira ou arrastar um
-            retângulo em volta de uma letra, linha ou floreio. Dê um nome ao recorte para
-            reencontrá-lo.
-          </p>
-          <p>
-            Cada exercício tem uma série de 20: 8 cobrindo, 8 copiando e 4 de memória. Concluir
-            repetição guarda todos os traços daquela tentativa e limpa a área. Um traço sozinho não
-            conta automaticamente.
-          </p>
-          <p>
-            Use a caneta digital com Modo teste desligado. Para mouse ou dedo, ligue o modo. A
-            identificação da caneta e a rejeição da palma dependem do dispositivo. Alterne com
-            prática no papel.
-          </p>
-          <p>
-            Exporte o backup em Ajustes para guardar recortes, tentativas e contagens. Os PDFs ficam
-            apenas neste navegador e precisam ser carregados novamente ao trocar de aparelho. O
-            backup não contém as apostilas.
-          </p>
+          <p>Pratique a folha inteira ou selecione um trecho. Cada série tem 8 repetições cobrindo, 8 copiando e 4 de memória.</p>
+          <p>Use a caneta digital. Para mouse ou dedo, ative Modo teste. Guarde uma cópia do progresso em Ajustes.</p>
         </div>
       </details>
       <details
@@ -314,23 +234,23 @@ export default function AcademyView({ value, onChange }: Props) {
         open={catalogOpen}
         onToggle={(e) => setCatalogOpen(e.currentTarget.open)}
       >
-        <summary>Escolher apostila · {book.title}</summary>
+        <summary>Escolher treino · {book.title}</summary>
         {(['base', 'bonus', 'complement'] as const).map((group) => (
           <section
             key={group}
             aria-label={
               group === 'base'
-                ? 'Base principal Fena'
+                ? 'Fundamentos'
                 : group === 'bonus'
-                  ? 'Bônus Fena'
+                  ? 'Leitura e escrita'
                   : 'Complementos'
             }
           >
             <h3>
               {group === 'base'
-                ? 'Base principal · Fena'
+                ? 'Fundamentos'
                 : group === 'bonus'
-                  ? 'Bônus da Fena · Reforço, leitura e escrita'
+                  ? 'Reforço, leitura e escrita'
                   : 'Complementos · Floreios e tinteiro'}
             </h3>
             {group === 'bonus' && (
@@ -345,24 +265,16 @@ export default function AcademyView({ value, onChange }: Props) {
                   <button
                     onClick={() => {
                       setCatalogOpen(false)
-                      if (installed.includes(b.id)) practice(defaultWorksheet(b, b.firstPractice))
-                      else selectPage(b.id, b.firstPractice)
+                      practice(defaultWorksheet(b, b.firstPractice))
                     }}
                     aria-pressed={b.id === book.id}
                   >
                     <strong>{b.title}</strong>
                     <span>
-                      {b.pages} páginas ·{' '}
-                      {installed.includes(b.id) ? 'Praticar com caneta' : 'PDF ainda não carregado'}
+                      {b.pages - b.firstPractice + 1} folhas ·{' '}
+                      Praticar com caneta
                     </span>
                   </button>
-                  <a
-                    href={`https://drive.google.com/file/d/${b.driveId}/view`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Abrir original ↗
-                  </a>
                 </div>
               ))}
             </div>
@@ -374,43 +286,23 @@ export default function AcademyView({ value, onChange }: Props) {
           {error}
         </p>
       )}
-      {opening && <p role="status">Abrindo apostila…</p>}
-      {!pdf && !error && !opening && (
-        <p className="course-note">
-          O PDF de {book.title} ainda não está neste aparelho. Carregue a apostila para escrever
-          diretamente sobre os exercícios, com caneta e borracha.{' '}
-          <button
-            className="primary-button"
-            disabled={importing}
-            onClick={() => input.current?.click()}
-          >
-            {importing ? 'Carregando…' : 'Carregar apostila e habilitar treino'}
-          </button>{' '}
-          <a
-            href={`https://drive.google.com/file/d/${book.driveId}/view`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Baixar original ↗
-          </a>
-        </p>
-      )}
+      {opening && <p role="status">Preparando exercícios…</p>}
       {pdf && (
         <>
           <div className="academy-toolbar">
             <label>
-              Folha do PDF{' '}
+              Folha de treino{' '}
               <select value={page} onChange={(e) => selectPage(book.id, Number(e.target.value))}>
-                {Array.from({ length: book.pages }, (_, i) => (
+                {Array.from({ length: book.pages - book.firstPractice + 1 }, (_, offset) => { const i = offset + book.firstPractice - 1; return (
                   <option key={i + 1} value={i + 1}>
                     {i + 1} / {book.pages}
                   </option>
-                ))}
+                )})}
               </select>
             </label>
             <button
               className="secondary-button"
-              disabled={page <= 1}
+              disabled={page <= book.firstPractice}
               onClick={() => selectPage(book.id, page - 1)}
             >
               Anterior
@@ -556,13 +448,13 @@ export default function AcademyView({ value, onChange }: Props) {
                 >
                   Praticar folha inteira
                 </button>
-                <p>Numeração pela posição no PDF, incluindo a capa.</p>
+                <p>Selecione o trecho que deseja repetir.</p>
               </aside>
             </div>
           )}
           {!draft && data.exercises.filter((e) => e.bookId === book.id).length > 0 && (
             <div className="academy-saved">
-              <h3>Meus exercícios desta apostila</h3>
+              <h3>Meus trechos de treino</h3>
               {data.exercises
                 .filter((e) => e.bookId === book.id)
                 .map((e) => (
