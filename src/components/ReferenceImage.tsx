@@ -72,10 +72,16 @@ export default function ReferenceImage({
   return (
     <div className={cn('reference-image-frame', className)}>
       {failedSource === src && (
-        <button type="button" className="secondary-button" onClick={() => {
-          setFailedSource(null)
-          setRetry((value) => value + 1)
-        }}>Recarregar assinatura</button>
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={() => {
+            setFailedSource(null)
+            setRetry((value) => value + 1)
+          }}
+        >
+          Recarregar assinatura
+        </button>
       )}
       <img
         key={`${src}:${retry}`}
