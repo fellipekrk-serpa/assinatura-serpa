@@ -1,3 +1,6 @@
+import { WORKBOOKS, worksheetKey } from '@/data/academy'
+import type { AcademyData } from '@/data/academy'
+import { validWorksheet, mergeAcademy } from './academy-practice'
 import { FOCUSED_REPETITIONS } from '@/data/course-focus'
 import type { CourseJournal, CoursePractice } from '@/data/course'
 import {
@@ -17,7 +20,7 @@ const DATABASE_NAME = 'assinatura-serpa'
 const STORE_NAME = 'dados'
 const STATE_KEY = 'estado-principal'
 const FALLBACK_KEY = 'assinatura-serpa-fallback-v1'
-const MAX_TOTAL_POINTS = 300_000
+const MAX_TOTAL_POINTS = 3_000_000
 
 export type StorageKind = 'indexeddb' | 'localStorage'
 
@@ -354,6 +357,7 @@ export function validateAppData(value: unknown): AppData {
     version: 1,
     draft: draftState(value.draft, counter),
     courseJournal: courseJournal(value.courseJournal),
+    academy: academyData(value.academy, counter),
     attempts: value.attempts.map((attempt) => savedAttempt(attempt, counter)),
     completedSessions,
     customReferences: references,
@@ -376,6 +380,7 @@ export function mergeBackup(current: AppData, imported: AppData): { data: AppDat
       version: 1,
       draft: currentHasDraft ? current.draft : imported.draft,
       courseJournal: mergeCourseJournals(current.courseJournal, imported.courseJournal),
+      academy: mergeAcademy(current.academy, imported.academy),
       attempts: [...current.attempts, ...additions].sort((a, b) =>
         b.createdAt.localeCompare(a.createdAt),
       ),
@@ -402,6 +407,93 @@ export function freshDataKeepingPreferences(data: AppData): AppData {
     },
     completedSessions: data.completedSessions,
     courseJournal: data.courseJournal,
+    academy: data.academy,
     customReferences: data.customReferences,
+  }
+}
+
+function academyData(value: unknown, counter: { total: number }): AcademyData | undefined {
+  if (value === undefined) return undefined
+  if (!isRecord(value)) throw new Error('Curso de caligrafia inválido')
+  const book = WORKBOOKS.find((b) => b.id === value.selectedBook)
+  if (
+    !book ||
+    !Number.isInteger(value.selectedPage) ||
+    Number(value.selectedPage) < 1 ||
+    Number(value.selectedPage) > book.pages
+  )
+    throw new Error('Apostila ou página inválida')
+  if (
+    !Array.isArray(value.exercises) ||
+    value.exercises.length > 10000 ||
+    !Array.isArray(value.attempts) ||
+    value.attempts.length > 10000 ||
+    !isRecord(value.progress) ||
+    Object.keys(value.progress).length > 10000
+  )
+    throw new Error('Catálogo de caligrafia inválido')
+  const block = (v: unknown): number => {
+    const n = requireNumber(v, 'bloco de caligrafia', 0, 2)
+    if (!Number.isInteger(n)) throw new Error('Bloco deve ser inteiro')
+    return n
+  }
+  const exercises = value.exercises.map(validWorksheet)
+  const attempts = value.attempts.map((v) => {
+    if (!isRecord(v)) throw new Error('Tentativa de caligrafia inválida')
+    return {
+      id: requireString(v.id, 'tentativa', 120),
+      exercise: validWorksheet(v.exercise),
+      block: block(v.block),
+      createdAt: requireString(v.createdAt, 'data da tentativa', 80),
+      strokes: strokeList(v.strokes, counter, 'traços de caligrafia'),
+    }
+  })
+  let draft: AcademyData['draft']
+  if (value.draft !== undefined) {
+    if (!isRecord(value.draft)) throw new Error('Rascunho de caligrafia inválido')
+    const d = value.draft
+    draft = {
+      exercise: validWorksheet(d.exercise),
+      block: block(d.block),
+      strokes: strokeList(d.strokes, counter, 'rascunho de caligrafia'),
+      redo: strokeList(d.redo ?? [], counter, 'refazer caligrafia'),
+    }
+    if (draft.exercise.bookId !== book.id || draft.exercise.page !== value.selectedPage)
+      throw new Error('Contexto da folha incompatível')
+  }
+  const progress: AcademyData['progress'] = {}
+  for (const [key, v] of Object.entries(value.progress)) {
+    if (
+      !isRecord(v) ||
+      !Array.isArray(v.counts) ||
+      v.counts.length !== 3 ||
+      typeof v.notes !== 'string' ||
+      v.notes.length > 3000 ||
+      typeof v.updatedAt !== 'string' ||
+      !Number.isFinite(Date.parse(v.updatedAt))
+    )
+      throw new Error('Progresso de caligrafia inválido')
+    const [bookId, page, crop] = key.split(':')
+    const exercise = validWorksheet({
+      bookId,
+      page: Number(page),
+      crop: crop?.split(',').map((n) => Number(n) / 10000),
+      title: '',
+    })
+    if (worksheetKey(exercise) !== key) throw new Error('Identificador de exercício inválido')
+    const counts = v.counts.map((n, i) => {
+      if (!Number.isInteger(n) || n < 0 || n > [8, 8, 4][i])
+        throw new Error('Contagem de caligrafia inválida')
+      return n
+    }) as [number, number, number]
+    progress[key] = { counts, notes: v.notes, updatedAt: v.updatedAt }
+  }
+  return {
+    selectedBook: book.id,
+    selectedPage: Number(value.selectedPage),
+    exercises,
+    attempts,
+    draft,
+    progress,
   }
 }
