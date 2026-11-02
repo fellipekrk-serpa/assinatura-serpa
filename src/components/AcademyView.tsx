@@ -33,6 +33,7 @@ export default function AcademyView({ value, onChange }: Props) {
   const [preview, setPreview] = useState('')
   const [reference, setReference] = useState('')
   const [loading, setLoading] = useState(false)
+  const [opening, setOpening] = useState(true)
   const [importing, setImporting] = useState(false)
   const [error, setError] = useState('')
   const [crop, setCrop] = useState<Crop>(FULL_PAGE)
@@ -83,6 +84,7 @@ export default function AcademyView({ value, onChange }: Props) {
     let cancelled = false
     let document: PDFDocumentProxy | null = null
     setPdf(null)
+    setOpening(true)
     setPreview('')
     setReference('')
     setError('')
@@ -97,6 +99,9 @@ export default function AcademyView({ value, onChange }: Props) {
       })
       .catch((e) => {
         if (!cancelled) setError(e.message)
+      })
+      .finally(() => {
+        if (!cancelled) setOpening(false)
       })
     return () => {
       cancelled = true
@@ -274,7 +279,7 @@ export default function AcademyView({ value, onChange }: Props) {
         }}
       />
       <p className="academy-help">
-        Carregue suas apostilas uma vez neste aparelho. Depois, use Praticar com caneta para escrever sobre as folhas aqui no aplicativo. Nenhuma
+        Escolha uma apostila disponível e use Praticar com caneta para escrever sobre as folhas aqui no aplicativo. Se ela não estiver disponível, use Carregar PDFs. Nenhuma
         página é substituída por um modelo genérico. As{' '}
         {WORKBOOKS.reduce((sum, b) => sum + b.pages, 0)} páginas catalogadas incluem capas e
         orientações, além dos exercícios.
@@ -369,7 +374,8 @@ export default function AcademyView({ value, onChange }: Props) {
           {error}
         </p>
       )}
-      {!pdf && !error && (
+      {opening && <p role="status">Abrindo apostila…</p>}
+      {!pdf && !error && !opening && (
         <p className="course-note">
           O PDF de {book.title} ainda não está neste aparelho. Carregue a apostila para escrever
           diretamente sobre os exercícios, com caneta e borracha.{' '}

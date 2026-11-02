@@ -49,3 +49,11 @@ pnpm build
 Após sincronizar o GitHub no Skip: carregar Coordenação, abrir uma folha, recortar um movimento e completar uma repetição com a caneta. Recarregar e conferir tinta/progresso; exportar/importar o backup; testar Copiar, Memória, borracha e troca de página. Conferir também um PDF de bônus, o de floreios e o de tinteiro. Essa validação é necessária antes de afirmar que o fluxo completo foi comprovado no dispositivo.
 
 O escopo entregue não inclui compra de cursos extras, correção automática da escrita, alteração dos modelos de assinatura nem sincronização remota dos dados pessoais.
+
+## Retomada local — 02/11/2026
+
+Repositório recuperado no computador. As 29 entradas foram baixadas diretamente dos IDs do Drive do catálogo para `Apostilas/`; SHA-256 de todos os arquivos conferido. São 28 conteúdos distintos. A pasta é ignorada pelo Git e não entra no build.
+
+O servidor Vite serve um catálogo local e as folhas sob `/apostilas/`; o aplicativo descobre as apostilas e verifica o hash antes de renderizar. O cartão disponível abre diretamente a prática com caneta. O fluxo manual continua disponível quando não existe acervo local. Para iniciar neste computador: `pnpm exec vite --host 127.0.0.1 --port 8080 --strictPort`. A versão hospedada não recebe os PDFs com esta alteração.
+
+Validação desta retomada: instalação com lockfile congelado; 19 testes aprovados; TypeScript, lint, build e diff check aprovados. Edge headless: abertura direta da folha 4 de Coordenação sem importação; eventos de caneta via CDP; repetição concluída e persistida após reload; borracha sem contagem indevida; desfazer e troca para folha 5; nenhum pageerror. Caneta física/pressão/palma não verificadas.
