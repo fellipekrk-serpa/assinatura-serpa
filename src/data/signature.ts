@@ -16,6 +16,7 @@ export interface SignaturePoint {
 }
 
 export interface SignatureStroke {
+  penType?: import('./pens').PenType
   tool?: 'pen' | 'eraser'
   id: string
   points: SignaturePoint[]

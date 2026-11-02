@@ -7,6 +7,7 @@ interface SignatureCanvasProps {
   strokes: SignatureStroke[]
   color: string
   lineWidth: number
+  penType?: import('@/data/pens').PenType
   tool?: 'pen' | 'eraser'
   testInput: boolean
   disabled?: boolean
@@ -29,6 +30,7 @@ export default function SignatureCanvas({
   lineWidth,
   testInput,
   tool = 'pen',
+  penType,
   disabled = false,
   guidePoint = null,
   sessionKey,
@@ -117,7 +119,10 @@ export default function SignatureCanvas({
         timelineRef.current.timelineBase +
         Math.max(0, event.timeStamp - timelineRef.current.eventBase),
     }
-    if (event.pointerType === 'pen' && event.pressure > 0) point.pressure = event.pressure
+    if (event.pointerType === 'pen') {
+      // Pointer-up has pressure 0: retain it so flex strokes taper instead of swelling.
+      point.pressure = Math.max(0, Math.min(1, event.pressure))
+    }
     return point
   }, [])
 
@@ -168,6 +173,7 @@ export default function SignatureCanvas({
     activeStrokeRef.current = {
       id: makeId('traco'),
       tool,
+      penType,
       color,
       width: tool === 'eraser' ? 20 : lineWidth,
       pointerType: kind,
