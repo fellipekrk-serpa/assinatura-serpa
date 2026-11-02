@@ -1,3 +1,4 @@
+import { PEN_PRESETS, type PenType } from '@/data/pens'
 import { WORKBOOKS, worksheetKey } from '@/data/academy'
 import type { AcademyData } from '@/data/academy'
 import { validWorksheet, mergeAcademy } from './academy-practice'
@@ -182,11 +183,14 @@ function signatureStroke(value: unknown, counter: { total: number }): SignatureS
   }
   if (value.tool !== undefined && value.tool !== 'pen' && value.tool !== 'eraser')
     throw new Error('Ferramenta inválida no backup')
+  if (value.penType !== undefined && !PEN_PRESETS.some((p) => p.id === value.penType))
+    throw new Error('Tipo de caneta inválido no backup')
   const color = requireString(value.color, 'cor', 20)
   if (!/^#[0-9a-f]{6}$/i.test(color)) throw new Error('Cor de traço inválida no backup')
   return {
     id: requireString(value.id, 'id do traço', 120),
     ...(value.tool === undefined ? {} : { tool: value.tool as 'pen' | 'eraser' }),
+    ...(value.penType === undefined ? {} : { penType: value.penType as PenType }),
     points: value.points.map((point) => signaturePoint(point, counter)),
     color,
     width: requireNumber(value.width, 'espessura', 1, 20),
@@ -481,8 +485,8 @@ function academyData(value: unknown, counter: { total: number }): AcademyData | 
       title: '',
     })
     if (worksheetKey(exercise) !== key) throw new Error('Identificador de exercício inválido')
-    const counts = v.counts.map((n, i) => {
-      if (!Number.isInteger(n) || n < 0 || n > [8, 8, 4][i])
+    const counts = v.counts.map((n) => {
+      if (!Number.isInteger(n) || n < 0 || !Number.isSafeInteger(n))
         throw new Error('Contagem de caligrafia inválida')
       return n
     }) as [number, number, number]

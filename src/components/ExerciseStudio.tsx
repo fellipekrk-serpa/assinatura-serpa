@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import SignatureCanvas from './SignatureCanvas'
+import PenPicker from './PenPicker'
+import { PEN_PRESETS, type PenType } from '@/data/pens'
 import {
   BLOCK_NAMES,
-  BLOCK_TARGETS,
   FULL_PAGE,
   WORKBOOKS,
   createAcademyData,
@@ -21,7 +22,10 @@ interface Props {
   onChange: (value: AcademyData) => void
 }
 export default function ExerciseStudio({ value, onChange }: Props) {
-  const data = value ?? createAcademyData()
+  const saved = value ?? createAcademyData()
+  // Old copy/memory drafts keep their ink while reopening in cover mode.
+  const data = saved.draft && saved.draft.block !== 0
+    ? { ...saved, draft: { ...saved.draft, block: 0 } } : saved
   const [pdf, setPdf] = useState<ExerciseDocument | null>(null)
   const [preview, setPreview] = useState('')
   const [reference, setReference] = useState('')
@@ -33,13 +37,12 @@ export default function ExerciseStudio({ value, onChange }: Props) {
   const [tool, setTool] = useState<'pen' | 'eraser'>('pen')
   const [testInput, setTestInput] = useState(false)
   const [pointer, setPointer] = useState('Aguardando caneta')
-  const [width, setWidth] = useState(3)
+  const [penType, setPenType] = useState<PenType>('fine')
+  const pen = PEN_PRESETS.find((p) => p.id === penType)!
   const [opacity, setOpacity] = useState(0.4)
-  const [revealed, setRevealed] = useState(false)
   const [replay, setReplay] = useState<SignatureStroke[] | null>(null)
   const [showHistory, setShowHistory] = useState(false)
   const [catalogOpen, setCatalogOpen] = useState(true)
-  const [seriesConfirm, setSeriesConfirm] = useState(false)
   const drag = useRef<[number, number] | null>(null)
   const stage = useRef<HTMLDivElement>(null)
   const frame = useRef<number | null>(null)
@@ -51,7 +54,6 @@ export default function ExerciseStudio({ value, onChange }: Props) {
   const activeCrop = draft?.exercise.crop.join(',') ?? ''
   const isPracticing = !!draft
   const entry = data.progress[key] ?? { counts: [0, 0, 0], notes: '', updatedAt: '' }
-  const total = entry.counts.reduce((a, b) => a + b, 0)
   const stopReplay = () => {
     if (frame.current !== null) cancelAnimationFrame(frame.current)
     frame.current = null
@@ -59,8 +61,6 @@ export default function ExerciseStudio({ value, onChange }: Props) {
   }
   const change = (next: AcademyData) => {
     stopReplay()
-    setRevealed(false)
-    setSeriesConfirm(false)
     onChange(next)
   }
   const updateDraft = (patch: Partial<WorksheetDraft>) => {
@@ -225,7 +225,7 @@ export default function ExerciseStudio({ value, onChange }: Props) {
       <details className="course-preparation">
         <summary>Como praticar e guardar seu progresso</summary>
         <div className="course-preparation-body">
-          <p>Pratique a folha inteira ou selecione um trecho. Cada série tem 8 repetições cobrindo, 8 copiando e 4 de memória.</p>
+          <p>Pratique a folha inteira ou selecione um trecho. Use Cobrir para escrever sobre o modelo, no seu ritmo.</p>
           <p>Use a caneta digital. Para mouse ou dedo, ative Modo teste. Guarde uma cópia do progresso em Ajustes.</p>
         </div>
       </details>
@@ -345,7 +345,7 @@ export default function ExerciseStudio({ value, onChange }: Props) {
                           selectedPage: attempt.exercise.page,
                           draft: {
                             exercise: attempt.exercise,
-                            block: attempt.block,
+                            block: 0,
                             strokes: attempt.strokes.map((s) => ({
                               ...s,
                               points: s.points.map((p) => ({ ...p })),
@@ -440,7 +440,7 @@ export default function ExerciseStudio({ value, onChange }: Props) {
                   disabled={crop[2] < 0.01 || crop[3] < 0.01}
                   onClick={startCrop}
                 >
-                  Praticar recorte · 20 vezes
+                  Praticar recorte
                 </button>
                 <button
                   className="secondary-button"
@@ -463,12 +463,7 @@ export default function ExerciseStudio({ value, onChange }: Props) {
                     key={worksheetKey(e)}
                     onClick={() => practice(e)}
                   >
-                    {e.title} ·{' '}
-                    {(data.progress[worksheetKey(e)]?.counts ?? [0, 0, 0]).reduce(
-                      (a, b) => a + b,
-                      0,
-                    )}
-                    /20
+                    {e.title}
                   </button>
                 ))}
             </div>
@@ -477,7 +472,7 @@ export default function ExerciseStudio({ value, onChange }: Props) {
             <section className="academy-practice" aria-label="Prática da caligrafia">
               <div className="academy-toolbar">
                 <h3>{draft.exercise.title}</h3>
-                <strong>{total}/20 repetições</strong>
+                <strong>Cobrir</strong>
                 <button
                   className="text-button"
                   onClick={() => change({ ...archiveWorksheet(data), draft: undefined })}
@@ -485,32 +480,7 @@ export default function ExerciseStudio({ value, onChange }: Props) {
                   Voltar à folha
                 </button>
               </div>
-              <div className="academy-toolbar">
-                {BLOCK_NAMES.map((label, i) => (
-                  <button
-                    className="secondary-button"
-                    key={label}
-                    aria-pressed={draft.block === i}
-                    onClick={() => change(beginWorksheet(data, draft.exercise, i))}
-                  >
-                    {label} {entry.counts[i]}/{BLOCK_TARGETS[i]}
-                  </button>
-                ))}
-              </div>
-              <p>
-                {draft.block === 0
-                  ? 'Cubra o exercício original.'
-                  : draft.block === 1
-                    ? 'Observe a referência e copie na área em branco.'
-                    : 'Faça sem olhar. Revele a referência depois para comparar.'}
-              </p>
-              {reference && draft.block === 1 && (
-                <img
-                  className="academy-copy-reference"
-                  src={reference}
-                  alt="Referência para copiar"
-                />
-              )}
+              <p>Cubra o exercício com a caneta. Seus traços são salvos automaticamente.</p>
               <div className="academy-toolbar">
                 <button
                   className="secondary-button"
@@ -565,17 +535,7 @@ export default function ExerciseStudio({ value, onChange }: Props) {
                   />{' '}
                   Modo teste (dedo/mouse)
                 </label>
-                <label>
-                  Traço
-                  <input
-                    aria-label="Espessura da caneta"
-                    type="range"
-                    min="1"
-                    max="8"
-                    value={width}
-                    onChange={(e) => setWidth(Number(e.target.value))}
-                  />
-                </label>
+                <PenPicker value={penType} onChange={setPenType} />
                 <label>
                   Guia
                   <input
@@ -593,7 +553,7 @@ export default function ExerciseStudio({ value, onChange }: Props) {
               {reference && (
                 <div ref={stage} className="academy-stage">
                   <img className="academy-sizing-image" src={reference} alt="" aria-hidden="true" />
-                  {(draft.block === 0 || (draft.block === 2 && revealed)) && (
+                  {reference && (
                     <img
                       className="academy-overlay"
                       src={reference}
@@ -605,7 +565,8 @@ export default function ExerciseStudio({ value, onChange }: Props) {
                     key={key}
                     strokes={replay ?? draft.strokes}
                     color="#17213b"
-                    lineWidth={width}
+                    lineWidth={pen.width}
+                    penType={penType}
                     tool={tool}
                     testInput={testInput}
                     disabled={replay !== null}
@@ -629,18 +590,12 @@ export default function ExerciseStudio({ value, onChange }: Props) {
                   disabled={
                     !reference ||
                     !draft.strokes.some((s) => s.tool !== 'eraser') ||
-                    entry.counts[draft.block] >= BLOCK_TARGETS[draft.block] ||
                     replay !== null
                   }
                   onClick={() => change(completeWorksheet(data))}
                 >
-                  Concluir repetição
+                  Guardar prática
                 </button>
-                {draft.block === 2 && (
-                  <button className="secondary-button" onClick={() => setRevealed(!revealed)}>
-                    {revealed ? 'Ocultar referência' : 'Revelar referência'}
-                  </button>
-                )}
                 <button
                   className="secondary-button"
                   disabled={!draft.strokes.length}
@@ -655,41 +610,7 @@ export default function ExerciseStudio({ value, onChange }: Props) {
                 >
                   Exportar tinta PNG
                 </button>
-                <button className="text-button" onClick={() => setSeriesConfirm(!seriesConfirm)}>
-                  Recomeçar série
-                </button>
               </div>
-              {seriesConfirm && (
-                <div className="course-note">
-                  <p>Zerar a contagem deste exercício? As tentativas e anotações serão mantidas.</p>
-                  <button
-                    className="secondary-button"
-                    onClick={() => {
-                      change({
-                        ...archiveWorksheet(data),
-                        progress: {
-                          ...data.progress,
-                          [key]: {
-                            ...entry,
-                            counts: [0, 0, 0],
-                            updatedAt: new Date().toISOString(),
-                          },
-                        },
-                        draft: { ...draft, block: 0, strokes: [], redo: [] },
-                      })
-                      setSeriesConfirm(false)
-                    }}
-                  >
-                    Confirmar reinício
-                  </button>
-                </div>
-              )}
-              {total === 20 && (
-                <p className="course-note">
-                  Série concluída. Compare suas tentativas e leve o exercício para o papel. Você
-                  pode repetir a série quando quiser.
-                </p>
-              )}
               <label className="lesson-notes">
                 Minha revisão
                 <textarea
